@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FuncionsLab – 3r ESO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+:root {
+  --bg: #f0f4ff;
+  --bg2: #e6ecfa;
+  --surface: #ffffff;
+  --surface2: #f5f7ff;
+  --surface3: #eaeefc;
+  --accent1: #e63946;
+  --accent2: #f4a261;
+  --accent3: #2a9d8f;
+  --accent4: #3a7bd5;
+  --accent5: #7b5ea7;
+  --text: #1a1a2e;
+  --text-muted: #6b7280;
+  --correct: #2a9d8f;
+  --wrong: #e63946;
+  --border: rgba(58,123,213,0.13);
+  --border2: rgba(0,0,0,0.08);
+  --radius: 18px;
+  --shadow: 0 2px 16px rgba(58,123,213,0.10);
+  --shadow-lg: 0 8px 32px rgba(58,123,213,0.16);
+  --mono: 'Space Mono', monospace;
+  --sans: 'Nunito', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(58,123,213,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(58,123,213,0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+  pointer-events: none; z-index: 0;
+}
+
+.screen { display: none; position: relative; z-index: 1; }
+.screen.active { display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 28px 16px 48px; }
+
+/* NAV */
+.nav-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 56px;
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 8px rgba(58,123,213,0.07);
+}
+.nav-logo { font-family: var(--mono); font-size: 1.1rem; font-weight: 700; color: var(--accent4); letter-spacing: -1px; }
+.nav-logo span { color: var(--text); }
+.nav-actions { display: flex; gap: 8px; }
+.nav-btn {
+  padding: 7px 16px; border-radius: 50px;
+  border: 1.5px solid var(--border2); background: var(--surface);
+  color: var(--text-muted); font-family: var(--sans); font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; transition: all .2s;
+}
+.nav-btn:hover, .nav-btn.active { border-color: var(--accent4); color: var(--accent4); background: rgba(58,123,213,0.07); }
+
+/* HOME */
+#home {
+  padding-top: 80px; gap: 28px;
+  background: radial-gradient(ellipse at 65% 0%, rgba(123,94,167,0.08) 0%, transparent 55%),
+              radial-gradient(ellipse at 10% 80%, rgba(58,123,213,0.07) 0%, transparent 50%);
+}
+.logo-area { text-align: center; }
+.logo-title { font-family: var(--mono); font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 700; letter-spacing: -2px; line-height: 1; }
+.logo-title span { color: var(--accent4); }
+.logo-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; letter-spacing: 3px; text-transform: uppercase; font-weight: 700; }
+
+.score-bar {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 50px; padding: 10px 22px;
+  font-family: var(--mono); font-size: 0.88rem;
+  box-shadow: var(--shadow);
+}
+.score-bar span { color: var(--accent4); font-weight: 700; }
+
+.level-selector { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.level-btn {
+  padding: 9px 22px; border-radius: 50px;
+  border: 1.5px solid var(--border2); background: var(--surface);
+  color: var(--text-muted); font-family: var(--sans); font-size: 0.88rem; font-weight: 700;
+  cursor: pointer; transition: all .2s; box-shadow: var(--shadow);
+}
+.level-btn.active, .level-btn:hover { border-color: var(--accent4); color: var(--accent4); background: rgba(58,123,213,0.07); }
+
+.section-label { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2.5px; color: var(--text-muted); align-self: flex-start; padding: 0 4px; }
+
+.games-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; width: 100%; max-width: 920px; }
+.game-card {
+  background: var(--surface); border: 1.5px solid var(--border2); border-radius: var(--radius);
+  padding: 22px; cursor: pointer; transition: all .22s; position: relative; overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.game-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--card-color, var(--accent4)); transition: height .22s; }
+.game-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--card-color,var(--accent4)); }
+.game-card:hover::before { height: 6px; }
+.game-card-icon { font-size: 1.9rem; margin-bottom: 10px; }
+.game-card-title { font-size: 1rem; font-weight: 800; margin-bottom: 5px; }
+.game-card-desc { font-size: 0.81rem; color: var(--text-muted); line-height: 1.5; }
+.game-card-badge { display: inline-block; margin-top: 10px; padding: 3px 10px; border-radius: 50px; font-size: 0.72rem; font-weight: 800; background: var(--bg2); color: var(--text-muted); }
+
+/* PROGRESS */
+#progress { padding-top: 80px; gap: 22px; max-width: 720px; margin: 0 auto; width: 100%; }
+.progress-title { font-size: 1.6rem; font-weight: 900; text-align: center; font-family: var(--mono); letter-spacing: -1px; }
+.progress-subtitle { color: var(--text-muted); text-align: center; font-size: 0.88rem; }
+.progress-total-card {
+  width: 100%; background: linear-gradient(135deg, var(--accent4), var(--accent5));
+  border-radius: var(--radius); padding: 24px 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow-lg); color: white;
+}
+.progress-total-label { font-size: 0.82rem; font-weight: 700; opacity: .85; text-transform: uppercase; letter-spacing: 1px; }
+.progress-total-val { font-family: var(--mono); font-size: 2.8rem; font-weight: 700; line-height: 1; }
+.progress-total-sub { font-size: 0.78rem; opacity: .75; margin-top: 2px; }
+.chart-card { width: 100%; background: var(--surface); border: 1.5px solid var(--border2); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+.chart-card-title { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 20px; font-family: var(--mono); }
+.bar-chart { display: flex; flex-direction: column; gap: 14px; }
+.bar-row { display: flex; align-items: center; gap: 12px; }
+.bar-game-name { font-size: 0.8rem; font-weight: 700; min-width: 165px; color: var(--text); }
+.bar-track { flex: 1; height: 28px; background: var(--bg2); border-radius: 8px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 8px; background: var(--bar-color,var(--accent4)); transition: width 1s cubic-bezier(.4,0,.2,1); display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; min-width: 8px; }
+.bar-val { font-family: var(--mono); font-size: 0.73rem; font-weight: 700; color: white; white-space: nowrap; }
+.bar-max { font-size: 0.7rem; color: var(--text-muted); min-width: 54px; text-align: right; font-family: var(--mono); }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; width: 100%; }
+.stat-card { background: var(--surface); border: 1.5px solid var(--border2); border-radius: 14px; padding: 18px 14px; text-align: center; box-shadow: var(--shadow); }
+.stat-val { font-family: var(--mono); font-size: 1.8rem; font-weight: 700; color: var(--accent4); line-height: 1; }
+.stat-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+/* GAME */
+#game { padding-top: 80px; justify-content: flex-start; gap: 18px; max-width: 780px; margin: 0 auto; width: 100%; }
+.game-header { width: 100%; display: flex; align-items: center; gap: 12px; }
+.back-btn { background: var(--surface); border: 1.5px solid var(--border2); color: var(--text-muted); border-radius: 50px; padding: 8px 16px; cursor: pointer; font-family: var(--sans); font-size: 0.82rem; font-weight: 700; transition: all .2s; box-shadow: var(--shadow); }
+.back-btn:hover { color: var(--text); border-color: var(--text-muted); }
+.game-title-bar { flex: 1; font-size: 0.9rem; font-weight: 800; color: var(--text-muted); }
+.game-score-pill { background: var(--surface); border: 1.5px solid var(--border); border-radius: 50px; padding: 8px 16px; font-family: var(--mono); font-size: 0.85rem; color: var(--accent4); font-weight: 700; box-shadow: var(--shadow); }
+.progress-bar-wrap { width: 100%; height: 7px; background: var(--bg2); border-radius: 4px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent4), var(--accent5)); border-radius: 4px; transition: width .4s ease; }
+.question-card { width: 100%; background: var(--surface); border: 1.5px solid var(--border2); border-radius: var(--radius); padding: 26px; box-shadow: var(--shadow); }
+.question-label { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--accent4); margin-bottom: 10px; font-family: var(--mono); }
+.question-text { font-size: 1.02rem; font-weight: 700; line-height: 1.5; margin-bottom: 20px; }
+.graph-wrap { width: 100%; max-width: 460px; margin: 0 auto 22px; border-radius: 14px; overflow: hidden; border: 1.5px solid var(--border2); background: #f8faff; box-shadow: 0 2px 10px rgba(58,123,213,0.08); }
+.graph-wrap svg { display: block; width: 100%; }
+.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opt-btn { padding: 13px 16px; border-radius: 12px; border: 1.5px solid var(--border2); background: var(--surface2); color: var(--text); font-family: var(--sans); font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all .18s; text-align: left; line-height: 1.4; }
+.opt-btn:hover:not(:disabled) { border-color: var(--accent4); background: rgba(58,123,213,0.06); color: var(--accent4); }
+.opt-btn.correct { border-color: var(--correct); background: rgba(42,157,143,0.1); color: #1a7a71; }
+.opt-btn.wrong { border-color: var(--wrong); background: rgba(230,57,70,0.07); color: #c0303a; }
+.opt-btn:disabled { cursor: default; }
+.feedback-box { display: none; width: 100%; padding: 15px 20px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; line-height: 1.6; border: 2px solid transparent; }
+.feedback-box.show { display: block; }
+.feedback-box.correct { background: rgba(42,157,143,0.08); border-color: var(--correct); color: #1a7a71; }
+.feedback-box.wrong { background: rgba(230,57,70,0.07); border-color: var(--wrong); color: #c0303a; }
+.feedback-box .explain { color: var(--text-muted); margin-top: 5px; font-weight: 500; font-size: 0.85rem; }
+.next-btn { align-self: flex-end; padding: 13px 32px; border-radius: 50px; border: none; background: linear-gradient(135deg, var(--accent4), var(--accent5)); color: #fff; font-family: var(--sans); font-size: 0.96rem; font-weight: 800; cursor: pointer; transition: all .2s; display: none; box-shadow: 0 4px 16px rgba(58,123,213,0.25); }
+.next-btn.show { display: block; }
+.next-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(58,123,213,0.35); }
+
+/* MATCH */
+.match-description-box { background: linear-gradient(135deg, rgba(58,123,213,0.07), rgba(123,94,167,0.05)); border: 1.5px solid var(--border); border-radius: 14px; padding: 18px 22px; margin-bottom: 20px; font-size: 0.98rem; font-weight: 700; line-height: 1.6; }
+.match-description-box .desc-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: var(--accent4); margin-bottom: 8px; font-family: var(--mono); display: block; }
+.match-options-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.match-graph-opt { background: var(--surface2); border: 2px solid var(--border2); border-radius: 14px; padding: 6px; cursor: pointer; transition: all .2s; overflow: hidden; box-shadow: 0 1px 6px rgba(0,0,0,0.05); }
+.match-graph-opt:hover:not([disabled]) { border-color: var(--accent4); transform: translateY(-3px); box-shadow: 0 6px 18px rgba(58,123,213,0.18); }
+.match-graph-opt.correct { border-color: var(--correct); background: rgba(42,157,143,0.07); }
+.match-graph-opt.wrong { border-color: var(--wrong); background: rgba(230,57,70,0.06); }
+.match-graph-opt svg { display: block; width: 100%; border-radius: 8px; background: #f8faff; }
+.match-graph-label { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-muted); padding: 5px 2px 3px; font-family: var(--mono); }
+
+/* RESULTS */
+#results { padding-top: 80px; justify-content: center; gap: 22px; text-align: center; background: radial-gradient(ellipse at 50% 20%, rgba(42,157,143,0.07) 0%, transparent 60%); }
+.results-title { font-size: 2rem; font-weight: 900; font-family: var(--mono); letter-spacing: -1px; }
+.results-score { font-family: var(--mono); font-size: 4rem; font-weight: 700; color: var(--accent4); line-height: 1; }
+.results-sub { color: var(--text-muted); font-size: 0.92rem; }
+.results-medals { font-size: 2.8rem; margin: 4px 0; }
+.results-breakdown { width: 100%; max-width: 400px; background: var(--surface); border: 1.5px solid var(--border2); border-radius: var(--radius); padding: 20px; text-align: left; box-shadow: var(--shadow); }
+.breakdown-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border2); font-size: 0.88rem; }
+.breakdown-row:last-child { border-bottom: none; }
+.breakdown-val { font-family: var(--mono); font-weight: 700; }
+.breakdown-val.ok { color: var(--correct); }
+.breakdown-val.ko { color: var(--wrong); }
+.play-again-btn { padding: 14px 38px; border-radius: 50px; border: none; background: linear-gradient(135deg, var(--accent4), var(--accent5)); color: #fff; font-family: var(--sans); font-size: 1rem; font-weight: 800; cursor: pointer; transition: all .2s; box-shadow: 0 4px 18px rgba(58,123,213,0.25); }
+.play-again-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(58,123,213,0.35); }
+
+/* ── LOGIN SCREEN ── */
+#login {
+  padding-top: 80px; justify-content: center; gap: 28px; min-height: 100vh;
+  background: radial-gradient(ellipse at 60% 10%, rgba(123,94,167,0.08) 0%, transparent 55%);
+}
+.login-card {
+  width: 100%; max-width: 420px;
+  background: var(--surface); border: 1.5px solid var(--border2);
+  border-radius: var(--radius); padding: 36px 32px;
+  box-shadow: var(--shadow-lg); text-align: center;
+}
+.login-logo { font-family: var(--mono); font-size: 2rem; font-weight: 700; letter-spacing: -1px; margin-bottom: 4px; }
+.login-logo span { color: var(--accent4); }
+.login-sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 28px; }
+.login-label { font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); text-align: left; display: block; margin-bottom: 8px; }
+.login-input {
+  width: 100%; padding: 14px 16px; border-radius: 12px;
+  border: 1.5px solid var(--border2); background: var(--surface2);
+  color: var(--text); font-family: var(--sans); font-size: 1rem; font-weight: 700;
+  outline: none; transition: border-color .2s; margin-bottom: 16px;
+}
+.login-input:focus { border-color: var(--accent4); }
+.login-btn {
+  width: 100%; padding: 15px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--accent4), var(--accent5));
+  color: #fff; font-family: var(--sans); font-size: 1rem; font-weight: 800;
+  cursor: pointer; transition: all .2s; box-shadow: 0 4px 16px rgba(58,123,213,0.25);
+}
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(58,123,213,0.35); }
+.login-btn:disabled { background: var(--surface3); color: var(--text-muted); transform: none; cursor: default; box-shadow: none; }
+.login-error { color: var(--wrong); font-size: 0.85rem; font-weight: 600; min-height: 20px; }
+.login-alumne-pill {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(58,123,213,0.08); border: 1.5px solid var(--border);
+  border-radius: 50px; padding: 8px 16px;
+  font-family: var(--mono); font-size: 0.85rem; font-weight: 700; color: var(--accent4);
+}
+.login-alumne-pill button {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 0.8rem; font-weight: 700; padding: 0 4px;
+}
+.login-alumne-pill button:hover { color: var(--wrong); }
+
+/* ── SAVING INDICATOR ── */
+.saving-toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 999;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 50px; padding: 10px 18px;
+  font-family: var(--mono); font-size: 0.8rem; font-weight: 700;
+  box-shadow: var(--shadow-lg); opacity: 0; transform: translateY(10px);
+  transition: all .3s; pointer-events: none;
+}
+.saving-toast.show { opacity: 1; transform: translateY(0); }
+.saving-toast.ok { color: var(--correct); border-color: var(--correct); }
+.saving-toast.err { color: var(--wrong); border-color: var(--wrong); }
+
+/* ── TEACHER DASHBOARD ── */
+#teacher {
+  padding-top: 80px; gap: 22px; max-width: 900px; margin: 0 auto; width: 100%;
+}
+.teacher-header { width: 100%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.teacher-title { font-size: 1.5rem; font-weight: 900; font-family: var(--mono); letter-spacing: -1px; }
+.teacher-filter {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+.filter-btn {
+  padding: 7px 16px; border-radius: 50px;
+  border: 1.5px solid var(--border2); background: var(--surface);
+  color: var(--text-muted); font-family: var(--sans); font-size: 0.8rem; font-weight: 700;
+  cursor: pointer; transition: all .2s;
+}
+.filter-btn.active, .filter-btn:hover { border-color: var(--accent4); color: var(--accent4); background: rgba(58,123,213,0.07); }
+.teacher-table-wrap {
+  width: 100%; background: var(--surface); border: 1.5px solid var(--border2);
+  border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+}
+.teacher-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.teacher-table th {
+  background: var(--surface2); padding: 12px 16px; text-align: left;
+  font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); border-bottom: 1.5px solid var(--border2);
+  font-family: var(--mono);
+}
+.teacher-table td { padding: 11px 16px; border-bottom: 1px solid var(--border2); }
+.teacher-table tr:last-child td { border-bottom: none; }
+.teacher-table tr:hover td { background: var(--surface2); }
+.pct-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 50px;
+  font-family: var(--mono); font-size: 0.78rem; font-weight: 700;
+}
+.pct-badge.high { background: rgba(42,157,143,0.12); color: var(--correct); }
+.pct-badge.mid  { background: rgba(244,162,97,0.15); color: #c77a30; }
+.pct-badge.low  { background: rgba(230,57,70,0.1); color: var(--wrong); }
+.teacher-empty { text-align: center; padding: 40px; color: var(--text-muted); font-size: 0.9rem; }
+.teacher-stats-row {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; width: 100%;
+}
+.teacher-stat {
+  background: var(--surface); border: 1.5px solid var(--border2);
+  border-radius: 14px; padding: 16px; text-align: center; box-shadow: var(--shadow);
+}
+.teacher-stat-val { font-family: var(--mono); font-size: 1.8rem; font-weight: 700; color: var(--accent4); }
+.teacher-stat-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-top: 4px; text-transform: uppercase; }
+.refresh-btn {
+  padding: 8px 18px; border-radius: 50px; border: 1.5px solid var(--border2);
+  background: var(--surface); color: var(--text-muted); font-family: var(--sans);
+  font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all .2s;
+}
+.refresh-btn:hover { border-color: var(--accent4); color: var(--accent4); }
+@media(max-width:520px){
+  .teacher-stats-row { grid-template-columns: 1fr 1fr; }
+  .teacher-table { font-size: 0.78rem; }
+  .teacher-table th, .teacher-table td { padding: 8px 10px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav-bar">
+  <div class="nav-logo">Funcions<span>Lab</span></div>
+  <div class="nav-actions" id="nav-actions">
+    <button class="nav-btn active" id="nav-inici" onclick="goHome()">🏠 Inici</button>
+    <button class="nav-btn" id="nav-progress" onclick="goProgress()">📊 Progrés</button>
+  </div>
+</nav>
+
+<!-- TOAST -->
+<div class="saving-toast" id="saving-toast"></div>
+
+<!-- LOGIN -->
+<div id="login" class="screen active">
+  <div class="login-card">
+    <div class="login-logo">Funcions<span>Lab</span></div>
+    <div class="login-sub">3r ESO · Matemàtiques</div>
+    <label class="login-label">El teu nom</label>
+    <input class="login-input" id="login-input" type="text" placeholder="ex: Maria García"
+      maxlength="40" autocomplete="off" autocapitalize="words"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-error" id="login-error"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">Entrar al joc →</button>
+  </div>
+</div>
+
+<!-- TEACHER LOGIN -->
+<div id="teacher-login" class="screen">
+  <div class="login-card">
+    <div class="login-logo" style="font-size:1.4rem">👩‍🏫 Tauler professor</div>
+    <div class="login-sub">Introdueix la contrasenya del professor</div>
+    <label class="login-label">Contrasenya</label>
+    <input class="login-input" id="teacher-pwd-input" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')doTeacherLogin()">
+    <div class="login-error" id="teacher-pwd-error"></div>
+    <button class="login-btn" onclick="doTeacherLogin()">Accedir →</button>
+    <button class="back-btn" style="margin-top:12px;width:100%;text-align:center" onclick="goHome()">← Tornar</button>
+  </div>
+</div>
+
+<!-- TEACHER DASHBOARD -->
+<div id="teacher" class="screen">
+  <div class="teacher-header">
+    <div class="teacher-title">📊 Tauler del professor</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="refresh-btn" onclick="loadTeacherData()">🔄 Actualitzar</button>
+      <button class="back-btn" onclick="goHome()">← Sortir</button>
+    </div>
+  </div>
+  <div class="teacher-stats-row" id="teacher-stats">
+    <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-alumnes">—</div><div class="teacher-stat-label">Alumnes</div></div>
+    <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-partides">—</div><div class="teacher-stat-label">Partides</div></div>
+    <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-pct">—</div><div class="teacher-stat-label">% Encert mig</div></div>
+  </div>
+  <div class="teacher-filter" id="teacher-filter">
+    <button class="filter-btn active" onclick="filterTeacher('tots',this)">Tots</button>
+    <button class="filter-btn" onclick="filterTeacher(0,this)">És funció?</button>
+    <button class="filter-btn" onclick="filterTeacher(1,this)">Domini</button>
+    <button class="filter-btn" onclick="filterTeacher(2,this)">Continuïtat</button>
+    <button class="filter-btn" onclick="filterTeacher(3,this)">Punts tall</button>
+    <button class="filter-btn" onclick="filterTeacher(4,this)">Creixement</button>
+    <button class="filter-btn" onclick="filterTeacher(5,this)">Analitza</button>
+  </div>
+  <div class="teacher-table-wrap">
+    <table class="teacher-table">
+      <thead>
+        <tr>
+          <th>Alumne</th>
+          <th>Joc</th>
+          <th>Nivell</th>
+          <th>Punts</th>
+          <th>Màxim</th>
+          <th>% Encert</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody id="teacher-tbody">
+        <tr><td colspan="7" class="teacher-empty">Carregant dades…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="logo-area">
+    <div class="logo-title">Funcions<span>Lab</span></div>
+    <div class="logo-sub">3r ESO · Matemàtiques</div>
+  </div>
+  <div class="score-bar">⭐ Puntuació total: <span id="total-score">0</span> pts</div>
+  <div style="text-align:center">
+    <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:2px;font-weight:800;">Nivell de dificultat</div>
+    <div class="level-selector">
+      <button class="level-btn active" data-level="1" onclick="setLevel(1)">⭐ Nivell 1 — Bàsic</button>
+      <button class="level-btn" data-level="2" onclick="setLevel(2)">⭐⭐ Nivell 2 — Mitjà</button>
+      <button class="level-btn" data-level="3" onclick="setLevel(3)">⭐⭐⭐ Nivell 3 — Avançat</button>
+    </div>
+  </div>
+  <div class="section-label" style="max-width:920px;width:100%">🎮 Jocs de preguntes</div>
+  <div class="games-grid">
+    <div class="game-card" style="--card-color:#e63946" onclick="startGame(0)"><div class="game-card-icon">🎯</div><div class="game-card-title">És funció?</div><div class="game-card-desc">Decideix si una gràfica representa una funció o no.</div><div class="game-card-badge" id="badge-0">— pts</div></div>
+    <div class="game-card" style="--card-color:#3a7bd5" onclick="startGame(1)"><div class="game-card-icon">📐</div><div class="game-card-title">Domini i recorregut</div><div class="game-card-desc">Identifica el domini i el recorregut d'una funció.</div><div class="game-card-badge" id="badge-1">— pts</div></div>
+    <div class="game-card" style="--card-color:#f4a261" onclick="startGame(2)"><div class="game-card-icon">🔗</div><div class="game-card-title">Continuïtat</div><div class="game-card-desc">Determina si una funció és contínua i on hi ha discontinuïtats.</div><div class="game-card-badge" id="badge-2">— pts</div></div>
+    <div class="game-card" style="--card-color:#2a9d8f" onclick="startGame(3)"><div class="game-card-icon">✂️</div><div class="game-card-title">Punts de tall</div><div class="game-card-desc">Troba on la gràfica talla els eixos X i Y.</div><div class="game-card-badge" id="badge-3">— pts</div></div>
+    <div class="game-card" style="--card-color:#7b5ea7" onclick="startGame(4)"><div class="game-card-icon">📈</div><div class="game-card-title">Creixement i extrems</div><div class="game-card-desc">Identifica intervals de creixement i extrems relatius.</div><div class="game-card-badge" id="badge-4">— pts</div></div>
+    <div class="game-card" style="--card-color:#e76f51" onclick="startGame(5)"><div class="game-card-icon">🔬</div><div class="game-card-title">Analitza la gràfica</div><div class="game-card-desc">Estudia una gràfica completa: domini, continuïtat, punts de tall i extrems en un sol exercici.</div><div class="game-card-badge" id="badge-5">— pts</div></div>
+  </div>
+  <div class="section-label" style="max-width:920px;width:100%;margin-top:8px">🔀 Mode: Associa la descripció</div>
+  <div class="games-grid">
+    <div class="game-card" style="--card-color:#3a7bd5" onclick="startMatch(0)"><div class="game-card-icon">🔀</div><div class="game-card-title">Associa: Tipus de gràfica</div><div class="game-card-desc">Llegeix la descripció i selecciona la gràfica correcta.</div><div class="game-card-badge" id="badge-m0">— pts</div></div>
+    <div class="game-card" style="--card-color:#2a9d8f" onclick="startMatch(1)"><div class="game-card-icon">🔀</div><div class="game-card-title">Associa: Creixement</div><div class="game-card-desc">Identifica la gràfica que compleix les propietats de creixement.</div><div class="game-card-badge" id="badge-m1">— pts</div></div>
+    <div class="game-card" style="--card-color:#7b5ea7" onclick="startMatch(2)"><div class="game-card-icon">🔀</div><div class="game-card-title">Associa: Domini</div><div class="game-card-desc">Selecciona la gràfica amb el domini o recorregut descrit.</div><div class="game-card-badge" id="badge-m2">— pts</div></div>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div id="progress" class="screen">
+  <div class="progress-title">El meu progrés</div>
+  <div class="progress-subtitle">Millors puntuacions per joc i estadístiques generals</div>
+  <div class="progress-total-card" style="max-width:720px;width:100%">
+    <div>
+      <div class="progress-total-label">Puntuació total acumulada</div>
+      <div class="progress-total-val" id="prog-total-val">0</div>
+      <div class="progress-total-sub">punts de tots els jocs</div>
+    </div>
+    <div style="font-size:3.2rem">🏆</div>
+  </div>
+  <div class="stats-grid" style="max-width:720px;width:100%">
+    <div class="stat-card"><div class="stat-val" id="stat-jocs">0</div><div class="stat-label">Jocs jugats</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-correctes">0</div><div class="stat-label">Respostes OK</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-pct">—</div><div class="stat-label">% Encert</div></div>
+  </div>
+  <div class="chart-card" style="max-width:720px;width:100%">
+    <div class="chart-card-title">Millor puntuació per joc</div>
+    <div class="bar-chart" id="bar-chart"></div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="screen">
+  <div class="game-header">
+    <button class="back-btn" onclick="goHome()">← Inici</button>
+    <div class="game-title-bar" id="game-title-bar">Joc</div>
+    <div class="game-score-pill">+<span id="game-score">0</span> pts</div>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+  <div class="question-card">
+    <div class="question-label" id="q-label">Pregunta 1 / 6</div>
+    <div class="question-text" id="q-text"></div>
+    <div class="graph-wrap" id="graph-wrap">
+      <svg id="graph-svg" viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div id="answer-area"></div>
+  </div>
+  <div class="feedback-box" id="feedback-box"></div>
+  <button class="next-btn" id="next-btn" onclick="nextQuestion()">Següent →</button>
+</div>
+
+<!-- RESULTS -->
+<div id="results" class="screen">
+  <div class="results-medals" id="results-medals">🏆</div>
+  <div class="results-title" id="results-title">Molt bé!</div>
+  <div class="results-score" id="results-score">0</div>
+  <div class="results-sub" id="results-sub">punts aconseguits</div>
+  <div class="results-breakdown" id="results-breakdown"></div>
+  <button class="play-again-btn" onclick="playAgain()">🔄 Jugar de nou</button>
+  <button class="back-btn" style="margin-top:8px" onclick="goHome()">← Triar un altre joc</button>
+</div>
+
+<script src="config.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
