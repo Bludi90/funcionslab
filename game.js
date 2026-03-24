@@ -77,7 +77,7 @@ function showToast(msg, type='ok', ms=2800){
 
 // ── GUARDAR PUNTUACIÓ ─────────────────────────────────
 async function saveScore(jocIdx, jocNom, nivell, punts, puntsMax, pctEncert){
-  if(!currentAlumne) return; // no ha fet login
+  if(!currentAlumne) return;
   const row = {
     alumne: currentAlumne,
     joc_idx: jocIdx,
@@ -88,9 +88,28 @@ async function saveScore(jocIdx, jocNom, nivell, punts, puntsMax, pctEncert){
     pct_encert: pctEncert
   };
   showToast('💾 Guardant…', 'ok', 99999);
-  const ok = await sb.insert(row);
-  if(ok) showToast('✅ Puntuació guardada!', 'ok');
-  else    showToast('⚠️ No s\'ha pogut guardar', 'err');
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/puntuacions`, {
+      method:'POST',
+      headers:{
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(row)
+    });
+    if(r.ok){
+      showToast('✅ Puntuació guardada!', 'ok');
+    } else {
+      const err = await r.text();
+      console.error('Supabase error:', r.status, err);
+      showToast('⚠️ Error ' + r.status + ': ' + err.slice(0,60), 'err', 6000);
+    }
+  } catch(e) {
+    console.error('Fetch error:', e);
+    showToast('⚠️ Error de xarxa: ' + e.message, 'err', 6000);
+  }
 }
 
 // ── TAULER DEL PROFESSOR ──────────────────────────────
@@ -1285,3 +1304,4 @@ function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.ran
   // Mostra pantalla de login
   updateBadges();
 })();
+
