@@ -1284,7 +1284,7 @@ function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.ran
   const teacherBtn = document.createElement('button');
   teacherBtn.className = 'nav-btn';
   teacherBtn.style.cssText = 'margin-left:8px;border-color:rgba(123,94,167,0.3);color:#7b5ea7';
-  teacherBtn.textContent = '👩‍🏫 Profe';
+  teacherBtn.textContent = '👩‍🏫 Professorat';
   teacherBtn.onclick = goTeacher;
   nav.appendChild(teacherBtn);
 
