@@ -13,4 +13,4 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // Contrasenya del tauler del professor
 // Canvia-la per una que recordis!
-const TEACHER_PASSWORD = 'profe2024';
+const TEACHER_PASSWORD = 'matemati2026';
