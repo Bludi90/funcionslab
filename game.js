@@ -1,46 +1,89 @@
-// ── CLIENT SUPABASE LLEUGER (sense npm) ───────────────
+// ── CLIENT SUPABASE ───────────────────────────────────
 const sb = {
-  async insert(rows){
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/puntuacions`, {
+  async insert(table, rows){
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
       method:'POST',
+      headers:{
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(Array.isArray(rows)?rows:[rows])
+    });
+    if(!r.ok){ const e=await r.text(); console.error('sb.insert error',r.status,e); return null; }
+    return r.json();
+  },
+  async update(table, id, data){
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method:'PATCH',
       headers:{
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       },
-      body: JSON.stringify(Array.isArray(rows)?rows:[rows])
+      body: JSON.stringify(data)
     });
     return r.ok;
   },
-  async select(filter=''){
-    const url = `${SUPABASE_URL}/rest/v1/puntuacions?select=*&order=creat_at.desc${filter}&limit=500`;
-    const r = await fetch(url, {
+  async delete(table, id){
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method:'DELETE',
       headers:{
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`
       }
     });
-    if(!r.ok) return null;
+    return r.ok;
+  },
+  async select(table, filter=''){
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*${filter}`, {
+      headers:{
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if(!r.ok){ console.error('sb.select error',r.status); return null; }
     return r.json();
   }
 };
 
 // ── LOGIN ──────────────────────────────────────────────
 let currentAlumne = '';
+let currentUserObj = null; // objecte complet {id, nom_complet, alias, rol}
 
-function doLogin(){
+async function doLogin(){
   const input = document.getElementById('login-input');
-  const nom = input.value.trim();
-  if(nom.length < 2){
-    document.getElementById('login-error').textContent = 'Escriu el teu nom (mínim 2 caràcters)';
+  const alias = input.value.trim().toLowerCase();
+  if(alias.length < 2){
+    document.getElementById('login-error').textContent = 'Escriu el teu àlies (mínim 2 caràcters)';
     input.focus(); return;
   }
-  currentAlumne = nom;
-  // Guarda el nom localment per si refresca
-  try{ localStorage.setItem('fl_alumne', nom); }catch(e){}
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.textContent = 'Verificant…';
+
+  // Cerca l'usuari a la taula usuaris
+  const data = await sb.select('usuaris', `&alias=eq.${encodeURIComponent(alias)}&actiu=eq.true`);
+  btn.disabled = false;
+  btn.textContent = 'Entrar al joc →';
+
+  if(!data || data.length === 0){
+    document.getElementById('login-error').textContent = '❌ Àlies no reconegut. Consulta el professor.';
+    input.focus(); return;
+  }
+
+  const user = data[0];
+  if(user.rol === 'profe'){
+    document.getElementById('login-error').textContent = '👩‍🏫 Ets professor/a. Usa el botó "Profe" per accedir al tauler.';
+    return;
+  }
+
+  currentAlumne = user.alias;
+  currentUserObj = user;
+  try{ localStorage.setItem('fl_alias', user.alias); }catch(e){}
   document.getElementById('login-error').textContent = '';
-  // Actualitza nav: mostra pill amb nom
   updateNavAlumne();
   showScreen('home');
   setNav('inici');
@@ -48,10 +91,11 @@ function doLogin(){
 
 function updateNavAlumne(){
   const actions = document.getElementById('nav-actions');
+  const nom = currentUserObj ? currentUserObj.nom_complet : currentAlumne;
   actions.innerHTML = `
     <div class="login-alumne-pill">
-      👤 ${currentAlumne}
-      <button onclick="logOut()" title="Canviar alumne">✕</button>
+      👤 ${escHtml(nom)}
+      <button onclick="logOut()" title="Canviar usuari">✕</button>
     </div>
     <button class="nav-btn active" id="nav-inici" onclick="goHome()">🏠 Inici</button>
     <button class="nav-btn" id="nav-progress" onclick="goProgress()">📊 Progrés</button>`;
@@ -59,7 +103,8 @@ function updateNavAlumne(){
 
 function logOut(){
   currentAlumne = '';
-  try{ localStorage.removeItem('fl_alumne'); }catch(e){}
+  currentUserObj = null;
+  try{ localStorage.removeItem('fl_alias'); }catch(e){}
   const actions = document.getElementById('nav-actions');
   actions.innerHTML = `
     <button class="nav-btn active" id="nav-inici" onclick="goHome()">🏠 Inici</button>
@@ -79,7 +124,8 @@ function showToast(msg, type='ok', ms=2800){
 async function saveScore(jocIdx, jocNom, nivell, punts, puntsMax, pctEncert){
   if(!currentAlumne) return;
   const row = {
-    alumne: currentAlumne,
+    alumne: currentUserObj ? currentUserObj.nom_complet : currentAlumne,
+    user_alias: currentAlumne,
     joc_idx: jocIdx,
     joc_nom: jocNom,
     nivell,
@@ -99,26 +145,23 @@ async function saveScore(jocIdx, jocNom, nivell, punts, puntsMax, pctEncert){
       },
       body: JSON.stringify(row)
     });
-    if(r.ok){
-      showToast('✅ Puntuació guardada!', 'ok');
-    } else {
-      const err = await r.text();
-      console.error('Supabase error:', r.status, err);
-      showToast('⚠️ Error ' + r.status + ': ' + err.slice(0,60), 'err', 6000);
-    }
+    if(r.ok) showToast('✅ Puntuació guardada!', 'ok');
+    else { const e=await r.text(); console.error('saveScore error',r.status,e); showToast('⚠️ Error guardant: '+r.status, 'err', 5000); }
   } catch(e) {
-    console.error('Fetch error:', e);
-    showToast('⚠️ Error de xarxa: ' + e.message, 'err', 6000);
+    console.error('saveScore fetch error',e);
+    showToast('⚠️ Error de xarxa', 'err', 5000);
   }
 }
 
+// ══════════════════════════════════════════════════════
 // ── TAULER DEL PROFESSOR ──────────────────────────────
+// ══════════════════════════════════════════════════════
 let teacherAllData = [];
-let teacherFilter = 'tots';
+let teacherUsuaris = [];
+let teacherView = 'ranking'; // 'ranking' | 'alumne' | 'historial' | 'usuaris'
+let teacherSelectedAlias = null;
 
-function goTeacher(){
-  showScreen('teacher-login');
-}
+function goTeacher(){ showScreen('teacher-login'); }
 
 function doTeacherLogin(){
   const pwd = document.getElementById('teacher-pwd-input').value;
@@ -126,50 +169,179 @@ function doTeacherLogin(){
     document.getElementById('teacher-pwd-error').textContent = '';
     document.getElementById('teacher-pwd-input').value = '';
     showScreen('teacher');
-    loadTeacherData();
+    loadTeacherAll();
   } else {
     document.getElementById('teacher-pwd-error').textContent = 'Contrasenya incorrecta';
   }
 }
 
-async function loadTeacherData(){
-  const tbody = document.getElementById('teacher-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" class="teacher-empty">⏳ Carregant dades…</td></tr>';
-  const data = await sb.select();
-  if(!data){
-    tbody.innerHTML = '<tr><td colspan="7" class="teacher-empty">❌ Error de connexió. Comprova la configuració de Supabase.</td></tr>';
-    return;
-  }
-  teacherAllData = data;
-  renderTeacherTable(teacherAllData);
-  updateTeacherStats(teacherAllData);
+async function loadTeacherAll(){
+  showTeacherLoading();
+  const [partides, usuaris] = await Promise.all([
+    sb.select('puntuacions','&order=creat_at.desc&limit=1000'),
+    sb.select('usuaris','&order=nom_complet.asc')
+  ]);
+  teacherAllData = partides || [];
+  teacherUsuaris = usuaris || [];
+  if(teacherView === 'ranking') renderRanking();
+  else if(teacherView === 'historial') renderHistorial(teacherAllData);
+  else if(teacherView === 'usuaris') renderGestioUsuaris();
+  updateTeacherGlobalStats();
 }
 
-function filterTeacher(jocIdx, btn){
-  teacherFilter = jocIdx;
-  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  const filtered = jocIdx==='tots' ? teacherAllData : teacherAllData.filter(r=>r.joc_idx===jocIdx);
-  renderTeacherTable(filtered);
-  updateTeacherStats(filtered);
+function showTeacherLoading(){
+  document.getElementById('teacher-main-content').innerHTML =
+    '<div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ Carregant…</div>';
 }
 
-function renderTeacherTable(rows){
-  const tbody = document.getElementById('teacher-tbody');
-  if(!rows.length){
-    tbody.innerHTML = '<tr><td colspan="7" class="teacher-empty">Encara no hi ha dades per a aquest filtre.</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r=>{
-    const d = new Date(r.creat_at);
-    const data = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-    const pct = r.pct_encert;
+// ── STATS GLOBALS ──
+function updateTeacherGlobalStats(){
+  const alumnes = teacherUsuaris.filter(u=>u.rol==='alumne' && u.actiu);
+  document.getElementById('t-stat-alumnes').textContent = alumnes.length;
+  document.getElementById('t-stat-partides').textContent = teacherAllData.length;
+  const pcts = teacherAllData.map(r=>r.pct_encert).filter(Boolean);
+  document.getElementById('t-stat-pct').textContent = pcts.length ? Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length)+'%' : '—';
+}
+
+// ── VISTA: RÀNQUING D'ALUMNES ──
+function renderRanking(){
+  teacherView = 'ranking';
+  setTeacherTab('tab-ranking');
+  // Per cada alumne, calcula: suma de millors puntuacions per joc
+  const alumnes = teacherUsuaris.filter(u=>u.rol==='alumne' && u.actiu);
+  const rows = alumnes.map(u=>{
+    const partides = teacherAllData.filter(p=>p.user_alias===u.alias || p.alumne===u.nom_complet);
+    // Millor puntuació per cada joc (joc_idx)
+    const bestPerJoc = {};
+    partides.forEach(p=>{
+      const k = p.joc_idx;
+      if(bestPerJoc[k]===undefined || p.punts > bestPerJoc[k]) bestPerJoc[k]=p.punts;
+    });
+    const total = Object.values(bestPerJoc).reduce((a,b)=>a+b,0);
+    const pcts = partides.map(p=>p.pct_encert).filter(Boolean);
+    const pctMig = pcts.length ? Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length) : null;
+    const ultima = partides[0] ? new Date(partides[0].creat_at) : null;
+    return { u, total, jocsDistints: Object.keys(bestPerJoc).length, pctMig, ultima, partides: partides.length };
+  }).sort((a,b)=>b.total-a.total);
+
+  const html = `
+    <table class="teacher-table">
+      <thead><tr>
+        <th>#</th><th>Alumne</th><th>Àlies</th>
+        <th>Puntuació total</th><th>Jocs jugats</th>
+        <th>% Encert mig</th><th>Darrera activitat</th>
+      </tr></thead>
+      <tbody>
+        ${rows.length===0 ? '<tr><td colspan="7" class="teacher-empty">Encara no hi ha alumnes amb partides.</td></tr>' :
+          rows.map((r,i)=>{
+            const cls = r.pctMig>=75?'high':r.pctMig>=50?'mid':r.pctMig!==null?'low':'';
+            const data = r.ultima ? `${r.ultima.getDate().toString().padStart(2,'0')}/${(r.ultima.getMonth()+1).toString().padStart(2,'0')}` : '—';
+            return `<tr class="clickable-row" onclick="showAlumneDetail('${escHtml(r.u.alias)}')">
+              <td style="color:var(--text-muted);font-family:var(--mono)">${i+1}</td>
+              <td><strong>${escHtml(r.u.nom_complet)}</strong></td>
+              <td style="font-family:var(--mono);color:var(--accent4)">${escHtml(r.u.alias)}</td>
+              <td><strong style="font-family:var(--mono);font-size:1.05rem">${r.total}</strong> pts</td>
+              <td>${r.jocsDistints} <span style="color:var(--text-muted);font-size:0.8rem">(${r.partides} partides)</span></td>
+              <td>${r.pctMig!==null?`<span class="pct-badge ${cls}">${r.pctMig}%</span>`:'—'}</td>
+              <td style="color:var(--text-muted);font-size:0.85rem">${data}</td>
+            </tr>`;
+          }).join('')
+        }
+      </tbody>
+    </table>`;
+  document.getElementById('teacher-main-content').innerHTML = html;
+}
+
+// ── VISTA: DETALL ALUMNE ──
+function showAlumneDetail(alias){
+  teacherView = 'alumne';
+  teacherSelectedAlias = alias;
+  const u = teacherUsuaris.find(x=>x.alias===alias);
+  if(!u) return;
+  const partides = teacherAllData.filter(p=>p.user_alias===alias || p.alumne===u.nom_complet);
+
+  // Millor per joc
+  const bestPerJoc = {};
+  partides.forEach(p=>{
+    const k = p.joc_nom;
+    if(!bestPerJoc[k] || p.punts > bestPerJoc[k].punts) bestPerJoc[k] = p;
+  });
+  const totalPts = Object.values(bestPerJoc).reduce((a,b)=>a+b.punts,0);
+  const pcts = partides.map(p=>p.pct_encert).filter(Boolean);
+  const pctMig = pcts.length ? Math.round(pcts.reduce((a,b)=>a+b,0)/pcts.length) : null;
+  const ultima = partides[0] ? new Date(partides[0].creat_at) : null;
+  const ultimaStr = ultima ? `${ultima.getDate().toString().padStart(2,'0')}/${(ultima.getMonth()+1).toString().padStart(2,'0')}/${ultima.getFullYear()} ${ultima.getHours().toString().padStart(2,'0')}:${ultima.getMinutes().toString().padStart(2,'0')}` : '—';
+
+  const jocRows = Object.values(bestPerJoc).sort((a,b)=>a.joc_nom.localeCompare(b.joc_nom)).map(p=>{
+    const pct = p.pct_encert;
     const cls = pct>=75?'high':pct>=50?'mid':'low';
-    const nivellStr = '⭐'.repeat(r.nivell);
+    const niv = '⭐'.repeat(p.nivell);
     return `<tr>
-      <td><strong>${escHtml(r.alumne)}</strong></td>
-      <td>${escHtml(r.joc_nom)}</td>
-      <td>${nivellStr}</td>
+      <td>${escHtml(p.joc_nom)}</td>
+      <td>${niv}</td>
+      <td><strong>${p.punts}</strong> / ${p.punts_max}</td>
+      <td><span class="pct-badge ${cls}">${pct}%</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('teacher-main-content').innerHTML = `
+    <div style="margin-bottom:16px">
+      <button class="back-btn" onclick="renderRanking()">← Tornar al rànquing</button>
+    </div>
+    <div class="alumne-detail-header">
+      <div>
+        <div class="alumne-detail-nom">${escHtml(u.nom_complet)}</div>
+        <div class="alumne-detail-alias">@${escHtml(u.alias)}</div>
+      </div>
+      <div class="alumne-detail-stats">
+        <div class="alumne-stat"><div class="alumne-stat-val">${totalPts}</div><div class="alumne-stat-label">Punts totals</div></div>
+        <div class="alumne-stat"><div class="alumne-stat-val">${pctMig!==null?pctMig+'%':'—'}</div><div class="alumne-stat-label">% Encert mig</div></div>
+        <div class="alumne-stat"><div class="alumne-stat-val" style="font-size:0.85rem">${ultimaStr}</div><div class="alumne-stat-label">Darrera activitat</div></div>
+      </div>
+    </div>
+    <div class="teacher-table-wrap" style="margin-top:16px">
+      <table class="teacher-table">
+        <thead><tr><th>Joc</th><th>Millor nivell</th><th>Millor puntuació</th><th>% Encert</th></tr></thead>
+        <tbody>${jocRows || '<tr><td colspan="4" class="teacher-empty">Encara no ha jugat cap joc.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── VISTA: HISTORIAL GLOBAL ──
+function renderHistorial(rows){
+  teacherView = 'historial';
+  setTeacherTab('tab-historial');
+  if(!rows) rows = teacherAllData;
+  const html = `
+    <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+      ${['Tots','És funció?','Domini','Continuïtat','Punts tall','Creixement','Analitza','Associa: Tipus','Associa: Creixement','Associa: Domini'].map((nom,i)=>
+        `<button class="filter-btn" onclick="filterHistorial(${i===0?'null':i-1},this)">${nom}</button>`
+      ).join('')}
+    </div>
+    <div class="teacher-table-wrap">
+      <table class="teacher-table">
+        <thead><tr><th>Alumne</th><th>Joc</th><th>Nivell</th><th>Punts</th><th>Màxim</th><th>% Encert</th><th>Data</th></tr></thead>
+        <tbody id="historial-tbody">
+          ${renderHistorialRows(rows)}
+        </tbody>
+      </table>
+    </div>`;
+  document.getElementById('teacher-main-content').innerHTML = html;
+  // Marca el primer botó (Tots) com actiu
+  document.querySelector('#teacher-main-content .filter-btn').classList.add('active');
+}
+
+function renderHistorialRows(rows){
+  if(!rows.length) return '<tr><td colspan="7" class="teacher-empty">Sense dades.</td></tr>';
+  return rows.map(r=>{
+    const d=new Date(r.creat_at);
+    const data=`${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+    const pct=r.pct_encert; const cls=pct>=75?'high':pct>=50?'mid':'low';
+    const niv='⭐'.repeat(r.nivell||1);
+    const alias = r.user_alias ? `<span style="color:var(--text-muted);font-size:0.8rem"> @${escHtml(r.user_alias)}</span>` : '';
+    return `<tr>
+      <td><strong>${escHtml(r.alumne)}</strong>${alias}</td>
+      <td>${escHtml(r.joc_nom)}</td><td>${niv}</td>
       <td><strong>${r.punts}</strong></td>
       <td style="color:var(--text-muted)">${r.punts_max}</td>
       <td><span class="pct-badge ${cls}">${pct}%</span></td>
@@ -178,17 +350,135 @@ function renderTeacherTable(rows){
   }).join('');
 }
 
-function updateTeacherStats(rows){
-  const alumnes = new Set(rows.map(r=>r.alumne)).size;
-  const partides = rows.length;
-  const pctMig = rows.length ? Math.round(rows.reduce((s,r)=>s+r.pct_encert,0)/rows.length) : 0;
-  document.getElementById('t-stat-alumnes').textContent = alumnes;
-  document.getElementById('t-stat-partides').textContent = partides;
-  document.getElementById('t-stat-pct').textContent = partides ? pctMig+'%' : '—';
+function filterHistorial(jocIdx, btn){
+  document.querySelectorAll('#teacher-main-content .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = jocIdx===null ? teacherAllData : teacherAllData.filter(r=>r.joc_idx===jocIdx);
+  document.getElementById('historial-tbody').innerHTML = renderHistorialRows(filtered);
+}
+
+// ── VISTA: GESTIÓ D'USUARIS ──
+function renderGestioUsuaris(){
+  teacherView = 'usuaris';
+  setTeacherTab('tab-usuaris');
+  const alumnes = teacherUsuaris.filter(u=>u.rol==='alumne');
+  const profes  = teacherUsuaris.filter(u=>u.rol==='profe');
+
+  const renderUserRow = u => `
+    <tr>
+      <td><strong>${escHtml(u.nom_complet)}</strong></td>
+      <td style="font-family:var(--mono);color:var(--accent4)">@${escHtml(u.alias)}</td>
+      <td><span class="role-badge ${u.rol}">${u.rol==='profe'?'👩‍🏫 Profe':'🎓 Alumne'}</span></td>
+      <td><span class="actiu-badge ${u.actiu?'actiu':'inactiu'}">${u.actiu?'Actiu':'Inactiu'}</span></td>
+      <td>
+        <button class="tbl-btn edit" onclick="editUser('${u.id}')">✏️ Editar</button>
+        <button class="tbl-btn ${u.actiu?'deactivate':'activate'}" onclick="toggleUserActiu('${u.id}',${!u.actiu})">${u.actiu?'⏸ Desactivar':'▶ Activar'}</button>
+        <button class="tbl-btn delete" onclick="deleteUser('${u.id}','${escHtml(u.nom_complet)}')">🗑</button>
+      </td>
+    </tr>`;
+
+  document.getElementById('teacher-main-content').innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+      <button class="login-btn" style="width:auto;padding:10px 24px" onclick="showUserForm()">+ Nou usuari</button>
+    </div>
+
+    <div id="user-form-wrap"></div>
+
+    <div class="teacher-section-title">🎓 Alumnes (${alumnes.length})</div>
+    <div class="teacher-table-wrap" style="margin-bottom:20px">
+      <table class="teacher-table">
+        <thead><tr><th>Nom complet</th><th>Àlies</th><th>Rol</th><th>Estat</th><th>Accions</th></tr></thead>
+        <tbody>${alumnes.map(renderUserRow).join('') || '<tr><td colspan="5" class="teacher-empty">Sense alumnes</td></tr>'}</tbody>
+      </table>
+    </div>
+
+    <div class="teacher-section-title">👩‍🏫 Professors (${profes.length})</div>
+    <div class="teacher-table-wrap">
+      <table class="teacher-table">
+        <thead><tr><th>Nom complet</th><th>Àlies</th><th>Rol</th><th>Estat</th><th>Accions</th></tr></thead>
+        <tbody>${profes.map(renderUserRow).join('') || '<tr><td colspan="5" class="teacher-empty">Sense professors</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+function showUserForm(id){
+  const u = id ? teacherUsuaris.find(x=>x.id===id) : null;
+  const wrap = document.getElementById('user-form-wrap');
+  wrap.innerHTML = `
+    <div class="user-form-card">
+      <div class="user-form-title">${u ? '✏️ Editar usuari' : '+ Nou usuari'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label class="login-label">Nom complet</label>
+          <input class="login-input" id="uf-nom" value="${u?escHtml(u.nom_complet):''}" placeholder="ex: Maria García">
+        </div>
+        <div>
+          <label class="login-label">Àlies (per fer login)</label>
+          <input class="login-input" id="uf-alias" value="${u?escHtml(u.alias):''}" placeholder="ex: maria.g" ${u?'readonly style="opacity:0.6"':''}>
+        </div>
+      </div>
+      <div style="margin-bottom:16px">
+        <label class="login-label">Rol</label>
+        <select class="login-input" id="uf-rol" style="cursor:pointer">
+          <option value="alumne" ${(!u||u.rol==='alumne')?'selected':''}>🎓 Alumne</option>
+          <option value="profe" ${u&&u.rol==='profe'?'selected':''}>👩‍🏫 Professor/a</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="login-btn" style="flex:1" onclick="saveUser('${u?u.id:''}')">${u?'Guardar canvis':'Crear usuari'}</button>
+        <button class="back-btn" style="flex:1;text-align:center" onclick="document.getElementById('user-form-wrap').innerHTML=''">Cancel·lar</button>
+      </div>
+      <div class="login-error" id="uf-error"></div>
+    </div>`;
+  wrap.scrollIntoView({behavior:'smooth'});
+}
+
+function editUser(id){ showUserForm(id); }
+
+async function saveUser(id){
+  const nom = document.getElementById('uf-nom').value.trim();
+  const alias = document.getElementById('uf-alias').value.trim().toLowerCase();
+  const rol = document.getElementById('uf-rol').value;
+  const errEl = document.getElementById('uf-error');
+
+  if(nom.length < 2){ errEl.textContent='El nom ha de tenir mínim 2 caràcters'; return; }
+  if(!id && alias.length < 2){ errEl.textContent='L\'àlies ha de tenir mínim 2 caràcters'; return; }
+
+  errEl.textContent = '';
+  if(id){
+    // Editar — només nom i rol (àlies no canvia)
+    const ok = await sb.update('usuaris', id, {nom_complet:nom, rol});
+    if(ok){ showToast('✅ Usuari actualitzat', 'ok'); await loadTeacherAll(); }
+    else errEl.textContent = 'Error actualitzant l\'usuari';
+  } else {
+    // Crear
+    const result = await sb.insert('usuaris', [{nom_complet:nom, alias, rol, actiu:true}]);
+    if(result){ showToast('✅ Usuari creat', 'ok'); await loadTeacherAll(); }
+    else errEl.textContent = 'Error creant l\'usuari (potser l\'àlies ja existeix)';
+  }
+}
+
+async function toggleUserActiu(id, nouEstat){
+  const ok = await sb.update('usuaris', id, {actiu: nouEstat});
+  if(ok){ showToast(nouEstat?'✅ Usuari activat':'⏸ Usuari desactivat', 'ok'); await loadTeacherAll(); }
+  else showToast('⚠️ Error', 'err');
+}
+
+async function deleteUser(id, nom){
+  if(!confirm(`Segur que vols eliminar "${nom}"? Aquesta acció no es pot desfer.`)) return;
+  const ok = await sb.delete('usuaris', id);
+  if(ok){ showToast('🗑 Usuari eliminat', 'ok'); await loadTeacherAll(); }
+  else showToast('⚠️ Error eliminant l\'usuari', 'err');
+}
+
+function setTeacherTab(activeId){
+  ['tab-ranking','tab-historial','tab-usuaris'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('active', el.id===activeId);
+  });
 }
 
 function escHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
 // ── STATE ──────────────────────────────────────────────
 let currentLevel=1, currentGame=-1, currentGameIsMatch=false, currentMatchIdx=-1;
 let currentQ=0, gameScore=0, gameAnswers=[], questions=[];
@@ -890,9 +1180,10 @@ function analitzaBank(level){
         {text:'Quin és el <strong>domini</strong>?',opts:['(−5, 6]','[−5, 6]','(−5, 6)','ℝ'],ans:0,ex:'Comença a x=−5 (obert) i acaba a x=6 (tancat): dom(f) = (−5, 6].'},
         {text:'Quin és el <strong>recorregut</strong>?',opts:['[−3, 3]','(−3, 3)','(−∞, 3]','[−5, 6]'],ans:0,ex:'Màxim absolut y=3, mínim absolut y≈−3: Im(f) = [−3, 3].'},
         {text:'La funció és <strong>contínua</strong>?',opts:['No, discontinuïtat de salt a x=−3','Sí','No, a x=−1','No, a x=−5 i x=6'],ans:0,ex:'Hi ha un salt visible a x=−3: el tram esquerre arriba a y≈1.2 però el dret comença per sota (discontinuïtat de salt).'},
+        {text:'On talla la gràfica l\'<strong>eix X</strong>?',opts:['x≈−4 i x≈2','Només x=0','x=−5 i x=6','No talla'],ans:0,ex:'La funció creua y=0 aproximadament a x≈−4 (tram esquerre) i x≈2 (tram dret, on la paràbola baixa).'},
         {text:'On talla l\'<strong>eix Y</strong>?',opts:['(0, 2.8) aprox','No talla','(0, 0)','(0, −1)'],ans:0,ex:'A x=0 estem al tram dret: f(0)=−(0+1)²/6+3=−1/6+3≈2.8. Tall a (0, 2.8).'},
         {text:'On és el <strong>màxim absolut</strong>?',opts:['x=−1, y=3','x=−5, y≈0.2','x=6, y≈−5.2','x=−3, y≈1.2'],ans:0,ex:'El vèrtex de la paràbola dreta és el punt més alt: (−1, 3). Màxim absolut.'},
-        {text:'En quin interval és <strong>decreixent</strong>?',opts:['(−1, 6)','(−3, −1)','(−5, −3)','(−5,−3)∪(−1, 6)'],ans:3,ex:'Al tram esquerre decreix cap a x=−3, i al tram dret decreix a partir del vèrtex x=−1. Intervals: (−5,−3)∪(−1,6).'},
+        {text:'En quin interval és <strong>decreixent</strong>?',opts:['(−1, 6)','(−3, −1)','(−5, −3)','(−5, −3)∪(−1, 6)'],ans:3,ex:'Al tram esquerre decreix cap a x=−3, i al tram dret decreix a partir del vèrtex x=−1. Intervals: (−5,−3)∪(−1,6).'},
       ],pts:14
     },
     { // Gràfica multi-tram de l'autoevaluació pàg.21 exercici 5:
@@ -915,7 +1206,7 @@ function analitzaBank(level){
       qs:[
         {text:'Quin és el <strong>domini</strong>?',opts:['[−4, 4]','ℝ','(−4, 4)','[−4, 4)'],ans:0,ex:'La gràfica va de x=−4 (tancat) fins x=4 (tancat): domini = [−4, 4].'},
         {text:'La funció és <strong>contínua</strong>?',opts:['Sí, és contínua','No, a x=−1','No, a x=−3 i x=2','No, a x=0'],ans:0,ex:'La corba no té salts: es pot dibuixar d\'un sol traç. Contínua.'},
-        {text:'On és el <strong>màxim relatiu</strong>?',opts:['x=−1, y≈3','x=4, y≈1.4','x=−4, y≈1','x=2, y=−1'],ans:0,ex:'El punt més alt de la gràfica és el màxim local a x=−1, y≈3 (màxim relatiu del domini visible).'},
+        {text:'On és el <strong>màxim absolut</strong>?',opts:['x=−1, y≈3','x=4, y≈1.4','x=−4, y≈1','x=2, y=−1'],ans:0,ex:'El punt més alt de la gràfica és el màxim local a x=−1, y≈3 (màxim absolut en aquest domini).'},
         {text:'En quins intervals és <strong>creixent</strong>?',opts:['(−3, −1) i (2, 4)','(−4, −1)','(−1, 2)','(0, 4)'],ans:0,ex:'La funció puja de x=−3 a x=−1 (fins al màxim), i de x=2 a x=4 (segon tram ascendent).'},
         {text:'On talla la gràfica l\'<strong>eix Y</strong>?',opts:['(0, y>0) aprox','No talla','(0, −1)','(0, 0)'],ans:0,ex:'A x=0 la funció baixa des del màxim x=−1: f(0)≈3−1·0.44·1.33≈2.4. Talla Y per sobre de 0.'},
         {text:'Quants <strong>mínims locals</strong> hi ha?',opts:['2 (aprox x=−3 i x=2)','1 (x=0)','3','Cap'],ans:0,ex:'Hi ha dos mínims locals: un a x≈−3 i un a x≈2.'},
@@ -1278,29 +1569,32 @@ function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.ran
 
 // ── INICI: comprova si ja hi ha alumne desat ──────────
 (function init(){
-  // Afegeix botó professor al nav (separat)
+  // Botó professor al nav
   const nav = document.querySelector('.nav-bar');
   const teacherBtn = document.createElement('button');
   teacherBtn.className = 'nav-btn';
   teacherBtn.style.cssText = 'margin-left:8px;border-color:rgba(123,94,167,0.3);color:#7b5ea7';
-  teacherBtn.textContent = '👩‍🏫 Professorat';
+  teacherBtn.textContent = '👩‍🏫 Profe';
   teacherBtn.onclick = goTeacher;
   nav.appendChild(teacherBtn);
 
-  // Auto-login si el nom estava desat
-  try{
-    const saved = localStorage.getItem('fl_alumne');
-    if(saved && saved.length >= 2){
-      currentAlumne = saved;
-      updateNavAlumne();
-      // Inicia directament a home, no a login
-      document.getElementById('login').classList.remove('active');
-      document.getElementById('home').classList.add('active');
-      updateBadges();
-      return;
-    }
-  }catch(e){}
-  // Mostra pantalla de login
-  updateBadges();
+  // Auto-login per àlies desat
+  (async()=>{
+    try{
+      const saved = localStorage.getItem('fl_alias');
+      if(saved && saved.length >= 2){
+        const data = await sb.select('usuaris',`&alias=eq.${encodeURIComponent(saved)}&actiu=eq.true`);
+        if(data && data.length > 0 && data[0].rol !== 'profe'){
+          currentAlumne = data[0].alias;
+          currentUserObj = data[0];
+          updateNavAlumne();
+          document.getElementById('login').classList.remove('active');
+          document.getElementById('home').classList.add('active');
+          updateBadges();
+          return;
+        }
+      }
+    }catch(e){}
+    updateBadges();
+  })();
 })();
-
