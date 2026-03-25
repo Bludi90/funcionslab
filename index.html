@@ -312,10 +312,75 @@ body::before {
 }
 .refresh-btn:hover { border-color: var(--accent4); color: var(--accent4); }
 @media(max-width:520px){
+  .options-grid{grid-template-columns:1fr;}
+  .match-options-grid{grid-template-columns:1fr 1fr;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .bar-game-name{min-width:90px;font-size:0.72rem;}
   .teacher-stats-row { grid-template-columns: 1fr 1fr; }
   .teacher-table { font-size: 0.78rem; }
   .teacher-table th, .teacher-table td { padding: 8px 10px; }
+  .alumne-detail-header { flex-direction: column; }
+  .alumne-detail-stats { width: 100%; }
+  .alumne-stat { flex: 1; min-width: 80px; }
+  .teacher-tab { padding: 8px 10px; font-size: 0.76rem; }
 }
+
+/* ── TEACHER TABS ── */
+.teacher-tabs {
+  display: flex; gap: 4px; width: 100%;
+  border-bottom: 2px solid var(--border2); margin-bottom: 20px;
+}
+.teacher-tab {
+  padding: 10px 20px; border: none; background: none;
+  font-family: var(--sans); font-size: 0.88rem; font-weight: 700;
+  color: var(--text-muted); cursor: pointer; border-radius: 8px 8px 0 0;
+  transition: all .18s; border-bottom: 3px solid transparent; margin-bottom: -2px;
+}
+.teacher-tab:hover { color: var(--accent4); background: rgba(58,123,213,0.05); }
+.teacher-tab.active { color: var(--accent4); border-bottom-color: var(--accent4); background: rgba(58,123,213,0.05); }
+
+/* ── RANKING CLICKABLE ROWS ── */
+.clickable-row { cursor: pointer; transition: background .15s; }
+.clickable-row:hover td { background: rgba(58,123,213,0.05); }
+
+/* ── ALUMNE DETAIL ── */
+.alumne-detail-header {
+  background: var(--surface); border: 1.5px solid var(--border2);
+  border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+.alumne-detail-nom { font-size: 1.4rem; font-weight: 900; font-family: var(--mono); }
+.alumne-detail-alias { color: var(--accent4); font-family: var(--mono); font-size: 0.9rem; margin-top: 4px; }
+.alumne-detail-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+.alumne-stat { text-align: center; background: var(--surface2); border: 1.5px solid var(--border2); border-radius: 12px; padding: 12px 16px; min-width: 100px; }
+.alumne-stat-val { font-family: var(--mono); font-size: 1.4rem; font-weight: 700; color: var(--accent4); }
+.alumne-stat-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-top: 3px; }
+
+/* ── USER MANAGEMENT ── */
+.teacher-section-title {
+  font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--text-muted); margin: 20px 0 10px; font-family: var(--mono);
+}
+.role-badge { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 0.78rem; font-weight: 700; }
+.role-badge.alumne { background: rgba(58,123,213,0.1); color: var(--accent4); }
+.role-badge.profe  { background: rgba(123,94,167,0.12); color: var(--accent5); }
+.actiu-badge { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
+.actiu-badge.actiu   { background: rgba(42,157,143,0.1); color: var(--correct); }
+.actiu-badge.inactiu { background: rgba(0,0,0,0.06); color: var(--text-muted); }
+.tbl-btn {
+  padding: 4px 10px; border-radius: 8px; border: 1.5px solid var(--border2);
+  font-family: var(--sans); font-size: 0.75rem; font-weight: 700;
+  cursor: pointer; transition: all .15s; background: var(--surface); margin-right: 4px;
+}
+.tbl-btn.edit:hover       { border-color: var(--accent4); color: var(--accent4); }
+.tbl-btn.deactivate:hover { border-color: var(--accent2); color: #c77a30; }
+.tbl-btn.activate:hover   { border-color: var(--correct); color: var(--correct); }
+.tbl-btn.delete:hover     { border-color: var(--wrong); color: var(--wrong); }
+.user-form-card {
+  background: var(--surface); border: 1.5px solid var(--accent4);
+  border-radius: var(--radius); padding: 24px; margin-bottom: 20px; box-shadow: var(--shadow-lg);
+}
+.user-form-title { font-size: 1rem; font-weight: 800; margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -364,41 +429,22 @@ body::before {
   <div class="teacher-header">
     <div class="teacher-title">📊 Tauler del professor</div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="refresh-btn" onclick="loadTeacherData()">🔄 Actualitzar</button>
+      <button class="refresh-btn" onclick="loadTeacherAll()">🔄 Actualitzar</button>
       <button class="back-btn" onclick="goHome()">← Sortir</button>
     </div>
   </div>
-  <div class="teacher-stats-row" id="teacher-stats">
-    <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-alumnes">—</div><div class="teacher-stat-label">Alumnes</div></div>
-    <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-partides">—</div><div class="teacher-stat-label">Partides</div></div>
+  <div class="teacher-stats-row">
+    <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-alumnes">—</div><div class="teacher-stat-label">Alumnes actius</div></div>
+    <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-partides">—</div><div class="teacher-stat-label">Partides totals</div></div>
     <div class="teacher-stat"><div class="teacher-stat-val" id="t-stat-pct">—</div><div class="teacher-stat-label">% Encert mig</div></div>
   </div>
-  <div class="teacher-filter" id="teacher-filter">
-    <button class="filter-btn active" onclick="filterTeacher('tots',this)">Tots</button>
-    <button class="filter-btn" onclick="filterTeacher(0,this)">És funció?</button>
-    <button class="filter-btn" onclick="filterTeacher(1,this)">Domini</button>
-    <button class="filter-btn" onclick="filterTeacher(2,this)">Continuïtat</button>
-    <button class="filter-btn" onclick="filterTeacher(3,this)">Punts tall</button>
-    <button class="filter-btn" onclick="filterTeacher(4,this)">Creixement</button>
-    <button class="filter-btn" onclick="filterTeacher(5,this)">Analitza</button>
+  <div class="teacher-tabs">
+    <button class="teacher-tab active" id="tab-ranking" onclick="renderRanking()">🏆 Rànquing</button>
+    <button class="teacher-tab" id="tab-historial" onclick="renderHistorial()">📋 Historial</button>
+    <button class="teacher-tab" id="tab-usuaris" onclick="renderGestioUsuaris()">👥 Usuaris</button>
   </div>
-  <div class="teacher-table-wrap">
-    <table class="teacher-table">
-      <thead>
-        <tr>
-          <th>Alumne</th>
-          <th>Joc</th>
-          <th>Nivell</th>
-          <th>Punts</th>
-          <th>Màxim</th>
-          <th>% Encert</th>
-          <th>Data</th>
-        </tr>
-      </thead>
-      <tbody id="teacher-tbody">
-        <tr><td colspan="7" class="teacher-empty">Carregant dades…</td></tr>
-      </tbody>
-    </table>
+  <div id="teacher-main-content">
+    <div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ Carregant…</div>
   </div>
 </div>
 
