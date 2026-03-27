@@ -8,8 +8,8 @@
 //   Supabase → el teu projecte → Settings → API Keys
 // ════════════════════════════════════════════════════════
 
-const SUPABASE_URL = 'https://zteenimkkfsohxiddhxn.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0ZWVuaW1ra2Zzb2h4aWRkaHhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjE2NTUsImV4cCI6MjA4OTgzNzY1NX0.wMOMbiIOh35sRnh9owvo_ygRqQyPgmcr0QIuwAzKe4A';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 // Contrasenya del tauler del professor
 // Canvia-la per una que recordis!
