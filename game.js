@@ -482,55 +482,81 @@ function escHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 // ── STATE ──────────────────────────────────────────────
 let currentLevel=1, currentGame=-1, currentGameIsMatch=false, currentMatchIdx=-1;
 let currentQ=0, gameScore=0, gameAnswers=[], questions=[];
-const gameBestScores=[0,0,0,0,0,0], matchBestScores=[0,0,0];
-const gameBestMax=[0,0,0,0,0,0], matchBestMax=[0,0,0];
+// gameBestScores[gameIdx][level] i matchBestScores[matchIdx][level]
+const gameBestScores  = {0:{1:0,2:0,3:0},1:{1:0,2:0,3:0},2:{1:0,2:0,3:0},3:{1:0,2:0,3:0},4:{1:0,2:0,3:0},5:{1:0,2:0,3:0}};
+const matchBestScores = {0:{1:0,2:0,3:0},1:{1:0,2:0,3:0},2:{1:0,2:0,3:0}};
 let totalGamesPlayed=0, totalCorrect=0, totalAnswered=0;
 const gameNames=['És funció?','Domini i recorregut','Continuïtat','Punts de tall','Creixement i extrems','Analitza la gràfica'];
 const matchNames=['Associa: Tipus de gràfica','Associa: Creixement','Associa: Domini'];
 const gameColors=['#e63946','#3a7bd5','#f4a261','#2a9d8f','#7b5ea7','#e76f51'];
 const matchColors=['#3a7bd5','#2a9d8f','#7b5ea7'];
 
-// Màxim teòric per joc i nivell — tots els nivells a 10 pts per pregunta
-// ── Joc 0 (És funció): L1:6q, L2:6q, L3:8q
-// ── Joc 1 (Domini): L1:4q, L2:4×2q (dom+rec), L3:4×2q
-// ── Joc 2 (Continuïtat): L1:4q, L2:5q, L3:6q (6 entrades, es mostren 6)
-// ── Joc 3 (Punts tall): L1:4g×2q, L2:4g×2q, L3:5g×2q
-// ── Joc 4 (Creixement): L1:3g×2q, L2:3g×4q, L3:4g×4q
-// ── Joc 5 (Analitza): L1:~2 entrades(5-6q), L2:3e×6q, L3:3e×~6q
-// ── Match: L1:3q, L2:4q (m0,m2) o 3q (m1), L3:3q
+// Puntuació creixent per nivell: N1=10, N2=15, N3=20
+// Màxims per joc i nivell
 const GAME_MAX = {
-  0: {1: 6*10,   2: 6*10,   3: 8*10  },   // 60 / 60 / 80
-  1: {1: 4*10,   2: 4*2*10, 3: 4*2*10},   // 40 / 80 / 80
-  2: {1: 4*10,   2: 5*10,   3: 6*10  },   // 40 / 50 / 60
-  3: {1: 4*2*10, 2: 4*2*10, 3: 5*2*10},   // 80 / 80 / 100
-  4: {1: 3*2*10, 2: 3*4*10, 3: 4*4*10},   // 60 / 120 / 160
-  5: {1: 11*10,  2: 18*10,  3: 17*10 },   // 110 / 180 / 170
+  0: {1: 6*10,   2: 6*15,   3: 8*20  },   //  60 /  90 / 160
+  1: {1: 4*10,   2: 4*2*15, 3: 4*2*20},   //  40 / 120 / 160
+  2: {1: 4*10,   2: 5*15,   3: 6*20  },   //  40 /  75 / 120
+  3: {1: 4*2*10, 2: 4*2*15, 3: 5*2*20},   //  80 / 120 / 200
+  4: {1: 3*2*10, 2: 3*4*15, 3: 4*4*20},   //  60 / 180 / 320
+  5: {1: 11*10,  2: 18*15,  3: 17*20 },   // 110 / 270 / 340
 };
 const MATCH_MAX = {
-  0: {1: 3*10, 2: 4*10, 3: 3*10},   // 30 / 40 / 30
-  1: {1: 3*10, 2: 3*10, 3: 3*10},   // 30 / 30 / 30
-  2: {1: 3*10, 2: 4*10, 3: 3*10},   // 30 / 40 / 30
+  0: {1: 3*10, 2: 4*15, 3: 3*20},   //  30 /  60 /  60
+  1: {1: 3*10, 2: 3*15, 3: 3*20},   //  30 /  45 /  60
+  2: {1: 3*10, 2: 4*15, 3: 3*20},   //  30 /  60 /  60
 };
 
-function getMaxForCurrentLevel(isMatch, idx){
-  if(isMatch) return MATCH_MAX[idx]?.[currentLevel] || '?';
-  return GAME_MAX[idx]?.[currentLevel] || '?';
+// Suma màxims d'un nivell concret (tots els jocs + matches)
+function totalMaxPerLevel(lv){
+  const g = Object.values(GAME_MAX).reduce((s,m)=>s+(m[lv]||0),0);
+  const m = Object.values(MATCH_MAX).reduce((s,m)=>s+(m[lv]||0),0);
+  return g+m;
+}
+// Suma obtinguda d'un nivell concret
+function totalObtingutPerLevel(lv){
+  const g = Object.keys(gameBestScores).reduce((s,i)=>s+(gameBestScores[i][lv]||0),0);
+  const m = Object.keys(matchBestScores).reduce((s,i)=>s+(matchBestScores[i][lv]||0),0);
+  return g+m;
 }
 
+// ── BADGES I RESUM DE PUNTUACIÓ ──────────────────────────
 function updateBadges(){
-  // Mostra millor / màxim possible a cada targeta
+  // Targetes individuals: mostra la millor del nivell actual
   for(let i=0;i<6;i++){
     const el=document.getElementById(`badge-${i}`);
     if(!el) continue;
-    const max=GAME_MAX[i]?.[currentLevel]||'?';
-    el.textContent = gameBestScores[i]>0 ? `${gameBestScores[i]} / ${max} pts` : `Màx: ${max} pts`;
+    const best=gameBestScores[i][currentLevel]||0;
+    const max=GAME_MAX[i]?.[currentLevel]||0;
+    el.textContent = best>0 ? `${best} / ${max} pts` : `Màx: ${max} pts`;
   }
   for(let i=0;i<3;i++){
     const el=document.getElementById(`badge-m${i}`);
     if(!el) continue;
-    const max=MATCH_MAX[i]?.[currentLevel]||'?';
-    el.textContent = matchBestScores[i]>0 ? `${matchBestScores[i]} / ${max} pts` : `Màx: ${max} pts`;
+    const best=matchBestScores[i][currentLevel]||0;
+    const max=MATCH_MAX[i]?.[currentLevel]||0;
+    el.textContent = best>0 ? `${best} / ${max} pts` : `Màx: ${max} pts`;
   }
+  // Resum per nivells davant de les seccions
+  renderLevelSummary();
+}
+
+function renderLevelSummary(){
+  const el = document.getElementById('level-score-summary');
+  if(!el) return;
+  const lvls=[1,2,3];
+  const stars=['⭐','⭐⭐','⭐⭐⭐'];
+  let totalObt=0, totalMax=0;
+  const pills = lvls.map((lv,i)=>{
+    const obt=totalObtingutPerLevel(lv);
+    const max=totalMaxPerLevel(lv);
+    totalObt+=obt; totalMax+=max;
+    const txt = obt>0 ? `${obt}/${max}` : `${max}`;
+    const style = obt>0 ? 'color:var(--accent4);font-weight:800' : 'color:var(--text-muted)';
+    return `<span class="lv-pill ${obt>0?'active':''}"><span class="lv-stars">${stars[i]}</span><span class="lv-score" style="${style}">${txt}</span></span>`;
+  }).join('');
+  const totalTxt = totalObt>0 ? `${totalObt}/${totalMax}` : `Màx: ${totalMax}`;
+  el.innerHTML = `${pills}<span class="lv-total">Total: <strong>${totalTxt}</strong></span>`;
 }
 
 // ── SVG ───────────────────────────────────────────────
@@ -1335,9 +1361,9 @@ function matchBank2(level){
 }
 
 // ── BUILD QUESTIONS ────────────────────────────────────
-// Punts per pregunta: sempre 10, independentment del nivell
-const PTS = {1:10, 2:10, 3:10};
-const MATCH_PTS = {1:10, 2:10, 3:10};
+// Punts creixents per nivell: N1=10, N2=15, N3=20
+const PTS = {1:10, 2:15, 3:20};
+const MATCH_PTS = {1:10, 2:15, 3:20};
 
 function buildQs(gameIdx,bank,level){
   const pts = PTS[level];
@@ -1534,13 +1560,25 @@ function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classL
 function showResults(){
   totalGamesPlayed++;
   const correct=gameAnswers.filter(a=>a.correct).length, tot=gameAnswers.length;
-  totalCorrect+=correct;totalAnswered+=tot;
-  // Màxim real = suma de tots els punts possibles de les preguntes d'aquesta partida
+  totalCorrect+=correct; totalAnswered+=tot;
   const realMax = questions.reduce((sum,q)=>sum+q.pts, 0);
-  if(currentGameIsMatch){if(gameScore>matchBestScores[currentMatchIdx]){matchBestScores[currentMatchIdx]=gameScore;matchBestMax[currentMatchIdx]=realMax;document.getElementById(`badge-m${currentMatchIdx}`).textContent=`${gameScore} / ${realMax} pts`;}}
-  else{if(gameScore>gameBestScores[currentGame]){gameBestScores[currentGame]=gameScore;gameBestMax[currentGame]=realMax;document.getElementById(`badge-${currentGame}`).textContent=`${gameScore} / ${realMax} pts`;}}
-  const ts=[...gameBestScores,...matchBestScores].reduce((a,b)=>a+b,0);
+
+  // Guarda millor puntuació per nivell
+  if(currentGameIsMatch){
+    if(gameScore > (matchBestScores[currentMatchIdx][currentLevel]||0)){
+      matchBestScores[currentMatchIdx][currentLevel] = gameScore;
+    }
+  } else {
+    if(gameScore > (gameBestScores[currentGame][currentLevel]||0)){
+      gameBestScores[currentGame][currentLevel] = gameScore;
+    }
+  }
+  // Actualitza badges i resum
+  updateBadges();
+  // Actualitza total al nav
+  const ts = [1,2,3].reduce((s,lv)=>s+totalObtingutPerLevel(lv),0);
   document.getElementById('total-score').textContent=ts;
+
   const pct=Math.round(correct/tot*100);
   let medal='💪',title='Segueix practicant!';
   if(pct>=100){medal='🥇';title='Perfecte!';}else if(pct>=75){medal='🏆';title='Fantàstic!';}else if(pct>=50){medal='👍';title='Molt bé!';}
@@ -1548,24 +1586,25 @@ function showResults(){
   document.getElementById('results-title').textContent=title;
   document.getElementById('results-score').textContent=gameScore;
   document.getElementById('results-sub').textContent=`punts · ${correct}/${tot} respostes correctes`;
-  const best=currentGameIsMatch?matchBestScores[currentMatchIdx]:gameBestScores[currentGame];
-  const bestMax=currentGameIsMatch?matchBestMax[currentMatchIdx]:gameBestMax[currentGame];
+  const best = currentGameIsMatch
+    ? matchBestScores[currentMatchIdx][currentLevel]
+    : gameBestScores[currentGame][currentLevel];
   document.getElementById('results-breakdown').innerHTML=`
     <div class="breakdown-row"><span>Respostes correctes</span><span class="breakdown-val ok">${correct}</span></div>
     <div class="breakdown-row"><span>Respostes incorrectes</span><span class="breakdown-val ko">${tot-correct}</span></div>
     <div class="breakdown-row"><span>% d'encert</span><span class="breakdown-val">${pct}%</span></div>
     <div class="breakdown-row"><span>Puntuació partida</span><span class="breakdown-val" style="color:var(--accent4)">${gameScore} / ${realMax} pts</span></div>
-    <div class="breakdown-row"><span>Millor puntuació</span><span class="breakdown-val" style="color:var(--accent4)">${best} / ${bestMax} pts</span></div>`;
+    <div class="breakdown-row"><span>Millor (N${currentLevel})</span><span class="breakdown-val" style="color:var(--accent4)">${best} / ${realMax} pts</span></div>`;
   showScreen('results');
-  // Guarda a Supabase en segon pla
+  // Guarda a Supabase
   const jocNom = currentGameIsMatch ? matchNames[currentMatchIdx] : gameNames[currentGame];
-  const jocIdx = currentGameIsMatch ? (currentMatchIdx + 10) : currentGame; // 10+ per a matches
+  const jocIdx = currentGameIsMatch ? (currentMatchIdx + 10) : currentGame;
   saveScore(jocIdx, jocNom, currentLevel, gameScore, realMax, pct);
 }
 
 // ── PROGRESS ───────────────────────────────────────────
 function renderProgress(){
-  const ts=[...gameBestScores,...matchBestScores].reduce((a,b)=>a+b,0);
+  const ts = [1,2,3].reduce((s,lv)=>s+totalObtingutPerLevel(lv),0);
   document.getElementById('prog-total-val').textContent=ts;
   document.getElementById('stat-jocs').textContent=totalGamesPlayed;
   document.getElementById('stat-correctes').textContent=totalCorrect;
@@ -1573,32 +1612,39 @@ function renderProgress(){
 
   const all=[
     ...gameNames.map((n,i)=>({
-      name:n, score:gameBestScores[i], color:gameColors[i],
-      max: GAME_MAX[i]?.[currentLevel] || 0,
-      realMax: gameBestMax[i] || GAME_MAX[i]?.[currentLevel] || 0,
+      name:n, color:gameColors[i],
+      scores: [1,2,3].map(lv=>({lv, obt:gameBestScores[i][lv]||0, max:GAME_MAX[i]?.[lv]||0}))
     })),
     ...matchNames.map((n,i)=>({
-      name:n, score:matchBestScores[i], color:matchColors[i],
-      max: MATCH_MAX[i]?.[currentLevel] || 0,
-      realMax: matchBestMax[i] || MATCH_MAX[i]?.[currentLevel] || 0,
+      name:n, color:matchColors[i],
+      scores: [1,2,3].map(lv=>({lv, obt:matchBestScores[i][lv]||0, max:MATCH_MAX[i]?.[lv]||0}))
     })),
   ];
 
   const chart=document.getElementById('bar-chart');
   chart.innerHTML='';
   all.forEach(g=>{
-    const maxNum = g.realMax || g.max || 1;
-    const pct = Math.min(100, Math.round(g.score / maxNum * 100));
+    const totalObt = g.scores.reduce((s,x)=>s+x.obt,0);
+    const totalMax = g.scores.reduce((s,x)=>s+x.max,0);
+    const pct = totalMax>0 ? Math.min(100,Math.round(totalObt/totalMax*100)) : 0;
+    const lvLabels = g.scores.map(x=>{
+      const p = x.obt>0?`${x.obt}/${x.max}`:`${x.max}`;
+      const style = x.obt>0?`color:${g.color};font-weight:700`:'color:var(--text-muted)';
+      return `<span style="font-size:0.72rem;${style}">${'⭐'.repeat(x.lv)} ${p}</span>`;
+    }).join('<span style="color:var(--border2);margin:0 4px">·</span>');
     const row=document.createElement('div');
     row.className='bar-row';
     row.innerHTML=`
       <div class="bar-game-name">${g.name}</div>
-      <div class="bar-track">
-        <div class="bar-fill" style="width:0%;--bar-color:${g.color}">
-          <span class="bar-val">${g.score>0?g.score+' pts':''}</span>
+      <div style="flex:1">
+        <div class="bar-track" style="margin-bottom:4px">
+          <div class="bar-fill" style="width:0%;--bar-color:${g.color}">
+            <span class="bar-val">${totalObt>0?totalObt+' pts':''}</span>
+          </div>
         </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${lvLabels}</div>
       </div>
-      <div class="bar-max">${g.score} / ${maxNum}</div>`;
+      <div class="bar-max">${totalObt}/${totalMax}</div>`;
     chart.appendChild(row);
     setTimeout(()=>{row.querySelector('.bar-fill').style.width=pct+'%';},80);
   });
@@ -1613,7 +1659,7 @@ function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.ran
   const teacherBtn = document.createElement('button');
   teacherBtn.className = 'nav-btn';
   teacherBtn.style.cssText = 'margin-left:8px;border-color:rgba(123,94,167,0.3);color:#7b5ea7';
-  teacherBtn.textContent = '👩‍🏫 Profe';
+  teacherBtn.textContent = '👩‍🏫 Professorat';
   teacherBtn.onclick = goTeacher;
   nav.appendChild(teacherBtn);
 
