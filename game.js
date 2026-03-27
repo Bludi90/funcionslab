@@ -490,26 +490,26 @@ const matchNames=['Associa: Tipus de gràfica','Associa: Creixement','Associa: D
 const gameColors=['#e63946','#3a7bd5','#f4a261','#2a9d8f','#7b5ea7','#e76f51'];
 const matchColors=['#3a7bd5','#2a9d8f','#7b5ea7'];
 
-// Màxim teòric per joc i nivell amb nova puntuació N1=10, N2=15, N3=20
+// Màxim teòric per joc i nivell — tots els nivells a 10 pts per pregunta
 // ── Joc 0 (És funció): L1:6q, L2:6q, L3:8q
-// ── Joc 1 (Domini): L1:4×1q×pts, L2:4×2q×pts (dom+rec), L3:4×2q×pts
-// ── Joc 2 (Continuïtat): L1:4q, L2:5q, L3:6q
+// ── Joc 1 (Domini): L1:4q, L2:4×2q (dom+rec), L3:4×2q
+// ── Joc 2 (Continuïtat): L1:4q, L2:5q, L3:6q (6 entrades, es mostren 6)
 // ── Joc 3 (Punts tall): L1:4g×2q, L2:4g×2q, L3:5g×2q
 // ── Joc 4 (Creixement): L1:3g×2q, L2:3g×4q, L3:4g×4q
-// ── Joc 5 (Analitza): L1:2e(6+5q), L2:3e~9q avg, L3:3e~7q avg, pts fixes per entrada
-// ── Match: L1:3q, L2:4q, L3:3q
+// ── Joc 5 (Analitza): L1:~2 entrades(5-6q), L2:3e×6q, L3:3e×~6q
+// ── Match: L1:3q, L2:4q (m0,m2) o 3q (m1), L3:3q
 const GAME_MAX = {
-  0: {1: 6*10,   2: 6*15,   3: 8*20  },   // 60 / 90 / 160
-  1: {1: 4*10,   2: 4*2*15, 3: 4*2*20},   // 40 / 120 / 160
-  2: {1: 4*10,   2: 5*15,   3: 6*20  },   // 40 / 75 / 120
-  3: {1: 4*2*10, 2: 4*2*15, 3: 5*2*20},   // 80 / 120 / 200
-  4: {1: 3*2*10, 2: 3*4*15, 3: 4*4*20},   // 60 / 180 / 320
-  5: {1: 11*10,  2: 15*15,  3: 21*20 },   // 110 / 225 / 420  (aproximat per nombre de qs reals)
+  0: {1: 6*10,   2: 6*10,   3: 8*10  },   // 60 / 60 / 80
+  1: {1: 4*10,   2: 4*2*10, 3: 4*2*10},   // 40 / 80 / 80
+  2: {1: 4*10,   2: 5*10,   3: 6*10  },   // 40 / 50 / 60
+  3: {1: 4*2*10, 2: 4*2*10, 3: 5*2*10},   // 80 / 80 / 100
+  4: {1: 3*2*10, 2: 3*4*10, 3: 4*4*10},   // 60 / 120 / 160
+  5: {1: 11*10,  2: 18*10,  3: 17*10 },   // 110 / 180 / 170
 };
 const MATCH_MAX = {
-  0: {1: 3*10, 2: 4*15, 3: 3*20},   // 30 / 60 / 60
-  1: {1: 3*10, 2: 3*15, 3: 3*20},   // 30 / 45 / 60
-  2: {1: 3*10, 2: 4*15, 3: 3*20},   // 30 / 60 / 60
+  0: {1: 3*10, 2: 4*10, 3: 3*10},   // 30 / 40 / 30
+  1: {1: 3*10, 2: 3*10, 3: 3*10},   // 30 / 30 / 30
+  2: {1: 3*10, 2: 4*10, 3: 3*10},   // 30 / 40 / 30
 };
 
 function getMaxForCurrentLevel(isMatch, idx){
@@ -724,7 +724,16 @@ function plotFnS(fn, a, b, color, svg, sw){
 
 
 
-// ── GRAPH BANKS (bancs completament separats per nivell) ────────────────
+// arrowFnScaled: afegeix fletxes a una funció plotejada amb makeBaseScaled
+function arrowFnScaled(fn, a, b, sides, color, svg){
+  const pxF = svg._pxS || px;
+  const pyF = svg._pyS || py;
+  const yVis = svg._yr  || 5;
+  const scX  = svg._scX || SC;
+  const scY  = svg._scY || SC;
+  if(sides==='both'||sides==='left')  _placeArrow(fn,a,b,'left', color,svg,pxF,pyF,yVis,scX,scY);
+  if(sides==='both'||sides==='right') _placeArrow(fn,a,b,'right',color,svg,pxF,pyF,yVis,scX,scY);
+}
 // Cada nivell té el seu propi conjunt de funcions, sense reutilitzar les del nivell anterior.
 
 // ═══════════════════════════════════════════════════════
@@ -837,37 +846,37 @@ function esFuncioBank(level){
 
 function dominiBank(level){
   const L1=[
-    {draw(s){makeBase(s);plotFn(x=>x+1,-4,4,'#3a7bd5',s,2.6,'both');},domOpts:['ℝ','[−4, 4]','[0,+∞)','(0,4)'],domAns:0,recOpts:['ℝ','[0,+∞)','[−3,5]','(−∞,0)'],recAns:0,domExplain:'Recta sense restriccions: domini = ℝ.',recExplain:'Recta: pren tots els valors reals. Recorregut = ℝ.'},
-    {draw(s){makeBaseScaled(s,12,4);plotFnS(x=>x*x,-4,4,'#2a9d8f',s,2.6,'both');},domOpts:['ℝ','[0,+∞)','[−3,3]','(−∞,0)'],domAns:0,recOpts:['[0,+∞)','ℝ','(0,+∞)','[0,9]'],recAns:0,domExplain:'Paràbola definida per tot x: domini = ℝ.',recExplain:'x² ≥ 0 sempre (i arriba a tots els valors positius): recorregut = [0, +∞). Compte: (0,+∞) exclouria el 0, però x=0 → y=0, que sí s\'assoleix.'},
+    {draw(s){makeBase(s);plotFn(x=>x+1,-4,4,'#3a7bd5',s,2.6,'both');},domOpts:['(−∞,+∞)','[−4, 4]','[0,+∞)','(0,4)'],domAns:0,recOpts:['(−∞,+∞)','[0,+∞)','[−3,5]','(−∞,0)'],recAns:0,domExplain:'Recta sense restriccions: domini = (−∞,+∞).',recExplain:'Recta: pren tots els valors reals. Recorregut = (−∞,+∞).'},
+    {draw(s){makeBaseScaled(s,12,4);plotFnS(x=>x*x,-4,4,'#2a9d8f',s,2.6,'both');},domOpts:['(−∞,+∞)','[0,+∞)','[−3,3]','(−∞,0)'],domAns:0,recOpts:['[0,+∞)','(−∞,+∞)','(0,+∞)','[0,9]'],recAns:0,domExplain:'Paràbola definida per tot x: domini = (−∞,+∞).',recExplain:'x² ≥ 0 sempre (i arriba a tots els valors positius): recorregut = [0, +∞). Compte: (0,+∞) exclouria el 0, però x=0 → y=0, que sí s\'assoleix.'},
     {draw(s){makeBase(s);plotSeg(-3,-2,2,3,'#7b5ea7',true,true,s);},domOpts:['[−3, 2]','(−3, 2)','[−3, 2)','(−3, 2]'],domAns:0,recOpts:['[−2, 3]','(−2, 3)','[−2, 3)','(−2, 3]'],recAns:0,domExplain:'Segment tancat als dos extrems: domini = [−3, 2].',recExplain:'Valors de y tancats als dos extrems: recorregut = [−2, 3].'},
-    {draw(s){makeBaseScaled(s,8,4);plotFnS(x=>-x*x+4,-4,4,'#f4a261',s,2.6,'both');},domOpts:['ℝ','[0,4]','[−2,2]','(0,+∞)'],domAns:0,recOpts:['(−∞, 4]','ℝ','[0,4]','[−4,4]'],recAns:0,domExplain:'Paràbola sense restriccions: domini = ℝ.',recExplain:'Màxim a y=4, decreix cap a −∞: recorregut = (−∞, 4].'},
+    {draw(s){makeBaseScaled(s,8,4);plotFnS(x=>-x*x+4,-4,4,'#f4a261',s,2.6,'both');},domOpts:['(−∞,+∞)','[0,4]','[−2,2]','(0,+∞)'],domAns:0,recOpts:['(−∞, 4]','(−∞,+∞)','[0,4]','[−4,4]'],recAns:0,domExplain:'Paràbola sense restriccions: domini = (−∞,+∞).',recExplain:'Màxim a y=4, decreix cap a −∞: recorregut = (−∞, 4].'},
     {draw(s){makeBase(s);plotSeg(-2,1,3,1,'#e63946',true,false,s);},domOpts:['[−2, 3)','[−2, 3]','(−2, 3)','(−2, 3]'],domAns:0,recOpts:['{1}','[1,3)','[0,1]','(1,3)'],recAns:0,domExplain:'Extrem esquerre tancat (−2), dret obert (3): domini = [−2, 3).',recExplain:'La funció és constant y=1: recorregut = {1}.'},
   ];
   const L2=[
-    {draw(s){makeBase(s);plotFn(x=>Math.sqrt(x),0,4.5,'#3a7bd5',s,2.6,'right');dot(0,0,'#3a7bd5',true,s);},domOpts:['[0, +∞)','(0, +∞)','ℝ','[0, 4]'],domAns:0,recOpts:['[0, +∞)','(0, +∞)','ℝ','[0, 4]'],recAns:0,domExplain:'√x necessita x ≥ 0: domini = [0, +∞).',recExplain:'√x ≥ 0 sempre: recorregut = [0, +∞).'},
-    {draw(s){makeBase(s);plotFn(x=>2/x,-4,-0.3,'#e63946',s,2.6,'both');plotFn(x=>2/x,0.3,4,'#e63946',s,2.6,'both');},domOpts:['ℝ − {0}','(0,+∞)','ℝ','[−4,4]'],domAns:0,recOpts:['ℝ − {0}','(0,+∞)','ℝ','(−2,2)'],recAns:0,domExplain:'No es pot dividir per 0: domini = ℝ − {0}.',recExplain:'2/x mai val 0: recorregut = ℝ − {0}.'},
-    {draw(s){makeBase(s);plotFn(x=>Math.sqrt(4-x*x),-2,2,'#7b5ea7',s);dot(-2,0,'#7b5ea7',true,s);dot(2,0,'#7b5ea7',true,s);},domOpts:['[−2, 2]','(−2, 2)','[0, 2]','ℝ'],domAns:0,recOpts:['[0, 2]','(0, 2)','[−2, 2]','ℝ'],recAns:0,domExplain:'4−x²≥0 → −2≤x≤2: domini = [−2, 2].',recExplain:'Semicercle superior: y entre 0 i 2. Recorregut = [0, 2].'},
-    {draw(s){makeBase(s);plotSeg(-4,2,-1,2,'#2a9d8f',false,true,s);plotSeg(-1,-1,3,-1,'#2a9d8f',false,true,s);},domOpts:['(−4,−1]∪(−1,3]','(−4,3]','[−4,3]','(−4,−1)∪(−1,3]'],domAns:[0,1],recOpts:['{−1, 2}','[−1,2]','(−1,2)','ℝ'],recAns:0,domExplain:'Dos trams: (−4,−1]∪(−1,3]. Com que −1 no pertany a cap dels dos, és equivalent a (−4,3]. Les dues opcions són correctes!',recExplain:'Pren dos valors: recorregut = {−1, 2}.'},
-    {draw(s){makeBase(s);plotFn(x=>Math.abs(x-1)-2,-4,4,'#f4a261',s,2.6,'both');},domOpts:['ℝ','[0,+∞)','[−1,+∞)','[1,+∞)'],domAns:0,recOpts:['[−2,+∞)','ℝ','[0,+∞)','(−2,+∞)'],recAns:0,domExplain:'Valor absolut definit per tot x: domini = ℝ.',recExplain:'Mínim a x=1 → y=−2, creix cap a +∞: recorregut = [−2, +∞).'},
+    {draw(s){makeBase(s);plotFn(x=>Math.sqrt(x),0,4.5,'#3a7bd5',s,2.6,'right');dot(0,0,'#3a7bd5',true,s);},domOpts:['[0, +∞)','(0, +∞)','(−∞,+∞)','[0, 4]'],domAns:0,recOpts:['[0, +∞)','(0, +∞)','(−∞,+∞)','[0, 4]'],recAns:0,domExplain:'√x necessita x ≥ 0: domini = [0, +∞).',recExplain:'√x ≥ 0 sempre: recorregut = [0, +∞).'},
+    {draw(s){makeBase(s);plotFn(x=>2/x,-4,-0.3,'#e63946',s,2.6,'both');plotFn(x=>2/x,0.3,4,'#e63946',s,2.6,'both');},domOpts:['(−∞,0)∪(0,+∞)','(0,+∞)','(−∞,+∞)','[−4,4]'],domAns:0,recOpts:['(−∞,0)∪(0,+∞)','(0,+∞)','(−∞,+∞)','(−2,2)'],recAns:0,domExplain:'No es pot dividir per 0: domini = (−∞,0)∪(0,+∞).',recExplain:'2/x mai val 0: recorregut = (−∞,0)∪(0,+∞).'},
+    {draw(s){makeBase(s);plotFn(x=>Math.sqrt(4-x*x),-2,2,'#7b5ea7',s);dot(-2,0,'#7b5ea7',true,s);dot(2,0,'#7b5ea7',true,s);},domOpts:['[−2, 2]','(−2, 2)','[0, 2]','(−∞,+∞)'],domAns:0,recOpts:['[0, 2]','(0, 2)','[−2, 2]','(−∞,+∞)'],recAns:0,domExplain:'4−x²≥0 → −2≤x≤2: domini = [−2, 2].',recExplain:'Semicercle superior: y entre 0 i 2. Recorregut = [0, 2].'},
+    {draw(s){makeBase(s);plotSeg(-4,2,-1,2,'#2a9d8f',false,true,s);plotSeg(-1,-1,3,-1,'#2a9d8f',false,true,s);},domOpts:['(−4,−1]∪(−1,3]','(−4,3]','[−4,3]','(−4,−1)∪(−1,3]'],domAns:[0,1],recOpts:['{−1, 2}','[−1,2]','(−1,2)','(−∞,+∞)'],recAns:0,domExplain:'Dos trams: (−4,−1]∪(−1,3]. Com que −1 no pertany a cap dels dos, és equivalent a (−4,3]. Les dues opcions són correctes!',recExplain:'Pren dos valors: recorregut = {−1, 2}.'},
+    {draw(s){makeBase(s);plotFn(x=>Math.abs(x-1)-2,-4,4,'#f4a261',s,2.6,'both');},domOpts:['(−∞,+∞)','[0,+∞)','[−1,+∞)','[1,+∞)'],domAns:0,recOpts:['[−2,+∞)','(−∞,+∞)','[0,+∞)','(−2,+∞)'],recAns:0,domExplain:'Valor absolut definit per tot x: domini = (−∞,+∞).',recExplain:'Mínim a x=1 → y=−2, creix cap a +∞: recorregut = [−2, +∞).'},
   ];
   const L3=[
-    {draw(s){makeBase(s);plotFn(x=>Math.sqrt(3-Math.abs(x)),-3,3,'#3a7bd5',s);dot(-3,0,'#3a7bd5',true,s);dot(3,0,'#3a7bd5',true,s);},domOpts:['[−3, 3]','(−3, 3)','[0, 3]','ℝ'],domAns:0,recOpts:['[0, √3] ≈ [0, 1.73]','[0, 3]','(0, √3)','[0,+∞)'],recAns:0,domExplain:'3−|x|≥0 → |x|≤3: domini = [−3, 3].',recExplain:'Màxim a x=0: y=√3≈1.73. Mínims als extrems x=±3: y=0. Recorregut = [0, √3].'},
+    {draw(s){makeBase(s);plotFn(x=>Math.sqrt(3-Math.abs(x)),-3,3,'#3a7bd5',s);dot(-3,0,'#3a7bd5',true,s);dot(3,0,'#3a7bd5',true,s);},domOpts:['[−3, 3]','(−3, 3)','[0, 3]','(−∞,+∞)'],domAns:0,recOpts:['[0, √3] ≈ [0, 1.73]','[0, 3]','(0, √3)','[0,+∞)'],recAns:0,domExplain:'3−|x|≥0 → |x|≤3: domini = [−3, 3].',recExplain:'Màxim a x=0: y=√3≈1.73. Mínims als extrems x=±3: y=0. Recorregut = [0, √3].'},
     {draw(s){makeBase(s);
       plotFn(x=>x+1,-4,4,'#7b5ea7',s,2.4,'both');
       dot(1,2,'#7b5ea7',false,s);
-    },domOpts:['ℝ − {1}','ℝ','(1,+∞)','[0,+∞)'],domAns:0,recOpts:['ℝ − {2}','ℝ','(2,+∞)','[0,+∞)'],recAns:0,domExplain:'(x²−1)/(x−1) = x+1 però x≠1: domini = ℝ − {1}.',recExplain:'La recta x+1 sense el punt (1,2): recorregut = ℝ − {2}.'},
-    {draw(s){makeBase(s);plotFn(x=>1/(x*x),-4,-0.3,'#e63946',s,2.6,'both');plotFn(x=>1/(x*x),0.3,4,'#e63946',s,2.6,'both');},domOpts:['ℝ − {0}','(0,+∞)','ℝ','[0,+∞)'],domAns:0,recOpts:['(0, +∞)','ℝ − {0}','[0,+∞)','ℝ'],recAns:0,domExplain:'x²≠0 → x≠0: domini = ℝ − {0}.',recExplain:'1/x²>0 sempre: recorregut = (0, +∞).'},
+    },domOpts:['(−∞,1)∪(1,+∞)','(−∞,+∞)','(1,+∞)','[0,+∞)'],domAns:0,recOpts:['(−∞,2)∪(2,+∞)','(−∞,+∞)','(2,+∞)','[0,+∞)'],recAns:0,domExplain:'(x²−1)/(x−1) = x+1 però x≠1: domini = (−∞,1)∪(1,+∞).',recExplain:'La recta x+1 sense el punt (1,2): recorregut = (−∞,2)∪(2,+∞).'},
+    {draw(s){makeBase(s);plotFn(x=>1/(x*x),-4,-0.3,'#e63946',s,2.6,'both');plotFn(x=>1/(x*x),0.3,4,'#e63946',s,2.6,'both');},domOpts:['(−∞,0)∪(0,+∞)','(0,+∞)','(−∞,+∞)','[0,+∞)'],domAns:0,recOpts:['(0, +∞)','(−∞,0)∪(0,+∞)','[0,+∞)','(−∞,+∞)'],recAns:0,domExplain:'x²≠0 → x≠0: domini = (−∞,0)∪(0,+∞).',recExplain:'1/x²>0 sempre: recorregut = (0, +∞).'},
     {draw(s){makeBase(s);
       plotFn(x=>-x-3,-4,-1,'#2a9d8f',s,2.6,'left');dot(-1,-2,'#2a9d8f',true,s);
       plotFn(x=>x*x-2,-1,2,'#2a9d8f',s);dot(-1,-1,'#2a9d8f',false,s);dot(2,2,'#2a9d8f',false,s);
       plotFn(x=>3,2,4,'#2a9d8f',s,2.6,'right');dot(2,3,'#2a9d8f',true,s);
-    },domOpts:['[−4, 4)','(−4,4)','[−4,+∞)','ℝ'],domAns:0,recOpts:['[−2, 3]','ℝ','(−2,3)','[−2,+∞)'],recAns:0,domExplain:'Definida de x=−4 (tancat) fins x=4 (obert per la fletxa del tram constant): domini = [−4, 4).',recExplain:'Tram 1: y∈[−2,1], tram 2: y∈(−1,2), tram 3: y=3. Unió = [−2, 3].'},
-    {draw(s){makeBase(s);plotFn(x=>Math.log(x+3)/Math.log(2),-2.9,4.5,'#f4a261',s,2.6,'right');arrowContinues(-2.9,-5,'down','#f4a261',s);},domOpts:['(−3, +∞)','[−3, +∞)','ℝ','(0,+∞)'],domAns:0,recOpts:['ℝ','(0,+∞)','[0,+∞)','(−3,+∞)'],recAns:0,domExplain:'log₂(x+3) necessita x+3>0 → x>−3: domini = (−3, +∞).',recExplain:'El logaritme pren tots els valors reals: recorregut = ℝ.'},
+    },domOpts:['[−4, 4)','(−4,4)','[−4,+∞)','(−∞,+∞)'],domAns:0,recOpts:['[−2, 3]','(−∞,+∞)','(−2,3)','[−2,+∞)'],recAns:0,domExplain:'Definida de x=−4 (tancat) fins x=4 (obert per la fletxa del tram constant): domini = [−4, 4).',recExplain:'Tram 1: y∈[−2,1], tram 2: y∈(−1,2), tram 3: y=3. Unió = [−2, 3].'},
+    {draw(s){makeBase(s);plotFn(x=>Math.log(x+3)/Math.log(2),-2.9,4.5,'#f4a261',s,2.6,'right');arrowContinues(-2.9,-5,'down','#f4a261',s);},domOpts:['(−3, +∞)','[−3, +∞)','(−∞,+∞)','(0,+∞)'],domAns:0,recOpts:['(−∞,+∞)','(0,+∞)','[0,+∞)','(−3,+∞)'],recAns:0,domExplain:'log₂(x+3) necessita x+3>0 → x>−3: domini = (−3, +∞).',recExplain:'El logaritme pren tots els valors reals: recorregut = (−∞,+∞).'},
     // Funció a trossos acotada: dom=[−4,3), rec=[−6,4] ... simplifiquem per a 3r ESO
     {draw(s){makeBase(s);
       plotFn(x=>-0.5*x+2,-4,0,'#3a7bd5',s,2.6,'left');dot(0,2,'#3a7bd5',false,s);
       plotFn(x=>-x*x+3,0,Math.sqrt(3),'#3a7bd5',s);dot(0,3,'#3a7bd5',true,s);dot(Math.sqrt(3),0,'#3a7bd5',true,s);
-    },domOpts:['[−4, √3]','(−4, √3)','[−4, 3)','ℝ'],domAns:0,recOpts:['[0, 4]','(0, 4)','[0, 3]','ℝ'],recAns:0,domExplain:'Tram 1: de x=−4 fins x=0 (obert). Tram 2: de x=0 fins x=√3 (tots dos tancats). Domini = [−4, √3].',recExplain:'Tram 1: f(−4)=4 (màx), f(0)=2. Tram 2: f(0)=3, f(√3)=0. Valors y ∈ [0, 4]. Recorregut = [0, 4].'},
+    },domOpts:['[−4, √3]','(−4, √3)','[−4, 3)','(−∞,+∞)'],domAns:0,recOpts:['[0, 4]','(0, 4)','[0, 3]','(−∞,+∞)'],recAns:0,domExplain:'Tram 1: de x=−4 fins x=0 (obert). Tram 2: de x=0 fins x=√3 (tots dos tancats). Domini = [−4, √3].',recExplain:'Tram 1: f(−4)=4 (màx), f(0)=2. Tram 2: f(0)=3, f(√3)=0. Valors y ∈ [0, 4]. Recorregut = [0, 4].'},
   ];
   const banks={1:L1,2:L2,3:L3};
   return shuffleArr([...banks[level]]).slice(0,level===1?4:4);
@@ -971,8 +980,8 @@ function creixementBank(level){
     {draw(s){makeBase(s);plotFn(x=>-x+1,-4,4,'#e63946',s,2.6,'both');},creixOpts:['No creix','(−∞,+∞)','(0,+∞)','(−∞,0)'],decOpts:['(−∞,+∞)','No decreix','(0,+∞)','(−∞,0)'],maxOpts:['Cap màxim','x=0,y=1','x=1,y=0','x=−1,y=2'],minOpts:['Cap mínim','x=0,y=1','x=1,y=0','x=−1,y=2'],ansCreix:0,ansDecr:0,ansMax:0,ansMin:0,exCreix:'Recta pendent negatiu: no creix mai.',exDecr:'Sempre decreixent: (−∞,+∞).',exMax:'Recta sense límit cap amunt: no té màxim absolut.',exMin:'Recta sense límit cap avall: no té mínim absolut.'},
     {draw(s){makeBase(s);plotFn(x=>2*x-1,-4,4,'#2a9d8f',s,2.6,'both');},creixOpts:['(−∞,+∞)','(0,+∞)','No creix','(−∞,0)'],decOpts:['No decreix','(−∞,+∞)','(0,+∞)','(−∞,0)'],maxOpts:['Cap màxim','x=0,y=−1','x=0.5,y=0','x=1,y=1'],minOpts:['Cap mínim','x=0,y=−1','x=0.5,y=0','x=1,y=1'],ansCreix:0,ansDecr:0,ansMax:0,ansMin:0,exCreix:'Recta pendent 2 (positiu): sempre creixent.',exDecr:'No decreix mai.',exMax:'No té màxim absolut.',exMin:'No té mínim absolut.'},
     {draw(s){makeBase(s);plotFn(x=>-0.5*x+2,-4,4,'#f4a261',s,2.6,'both');},creixOpts:['No creix','(−∞,+∞)','(0,+∞)','(−∞,0)'],decOpts:['(−∞,+∞)','No decreix','(0,+∞)','(−∞,0)'],maxOpts:['Cap màxim','x=0,y=2','x=4,y=0','x=−4,y=4'],minOpts:['Cap mínim','x=0,y=2','x=4,y=0','x=−4,y=4'],ansCreix:0,ansDecr:0,ansMax:0,ansMin:0,exCreix:'Recta pendent −0.5 (negatiu): no creix.',exDecr:'Sempre decreixent: (−∞,+∞).',exMax:'No té màxim absolut.',exMin:'No té mínim absolut.'},
-    {draw(s){makeBaseScaled(s,12,4);plotFnS(x=>x*x-1,-4,4,'#7b5ea7',s,2.6,'both');},creixOpts:['(0,+∞)','(−∞,0)','(−∞,+∞)','(−∞,−1)'],decOpts:['(−∞,0)','(0,+∞)','No decreix','(−∞,−1)'],maxOpts:['Cap màxim','x=0,y=−1','x=1,y=0','x=−1,y=0'],minOpts:['x=0, y=−1','Cap mínim','x=1,y=0','x=−1,y=0'],ansCreix:0,ansDecr:0,ansMax:0,ansMin:0,exCreix:'Paràbola cap amunt: creix a la dreta del vèrtex (x=0).',exDecr:'Decreix a l\'esquerra del vèrtex (x=0).',exMax:'Paràbola cap amunt: no té màxim absolut.',exMin:'Vèrtex = mínim absolut: (0,−1).'},
-    {draw(s){makeBaseScaled(s,8,4);plotFnS(x=>-x*x+4,-4,4,'#2a9d8f',s,2.6,'both');},creixOpts:['(−∞,0)','(0,+∞)','(−∞,+∞)','No creix'],decOpts:['(0,+∞)','(−∞,0)','No decreix','(−∞,+∞)'],maxOpts:['x=0, y=4','Cap màxim','x=4,y=0','x=2,y=0'],minOpts:['Cap mínim','x=0,y=4','x=2,y=0','x=−2,y=0'],ansCreix:0,ansDecr:0,ansMax:0,ansMin:0,exCreix:'Paràbola cap avall: creix fins al vèrtex (x=0).',exDecr:'Decreix a la dreta del vèrtex (x=0).',exMax:'Vèrtex = màxim absolut: (0,4).',exMin:'Paràbola cap avall: no té mínim absolut.'},
+    {draw(s){makeBaseScaled(s,12,4);plotFnS(x=>x*x-1,-4,4,'#7b5ea7',s,2.6);arrowFnScaled(x=>x*x-1,-4,4,'both','#7b5ea7',s);},creixOpts:['(0,+∞)','(−∞,0)','(−∞,+∞)','(−∞,−1)'],decOpts:['(−∞,0)','(0,+∞)','No decreix','(−∞,−1)'],maxOpts:['Cap màxim','x=0,y=−1','x=1,y=0','x=−1,y=0'],minOpts:['x=0, y=−1','Cap mínim','x=1,y=0','x=−1,y=0'],ansCreix:0,ansDecr:0,ansMax:0,ansMin:0,exCreix:'Paràbola cap amunt: creix a la dreta del vèrtex (x=0).',exDecr:'Decreix a l\'esquerra del vèrtex (x=0).',exMax:'Paràbola cap amunt: no té màxim absolut.',exMin:'Vèrtex = mínim absolut: (0,−1).'},
+    {draw(s){makeBaseScaled(s,8,4);plotFnS(x=>-x*x+4,-4,4,'#2a9d8f',s,2.6);arrowFnScaled(x=>-x*x+4,-4,4,'both','#2a9d8f',s);},creixOpts:['(−∞,0)','(0,+∞)','(−∞,+∞)','No creix'],decOpts:['(0,+∞)','(−∞,0)','No decreix','(−∞,+∞)'],maxOpts:['x=0, y=4','Cap màxim','x=4,y=0','x=2,y=0'],minOpts:['Cap mínim','x=0,y=4','x=2,y=0','x=−2,y=0'],ansCreix:0,ansDecr:0,ansMax:0,ansMin:0,exCreix:'Paràbola cap avall: creix fins al vèrtex (x=0).',exDecr:'Decreix a la dreta del vèrtex (x=0).',exMax:'Vèrtex = màxim absolut: (0,4).',exMin:'Paràbola cap avall: no té mínim absolut.'},
     // Cúbica en S: f(x)=−0.5x³+1.5x → f'=−1.5x²+1.5=0 → x=±1
     // f'(0)=1.5>0: creix al CENTRE (−1,1). f'(2)=−4.5<0: decreix als EXTREMS
     // f(1)=1 (MÀXIM), f(−1)=−1 (MÍNIM)
@@ -1075,29 +1084,29 @@ function analitzaBank(level){
     { // Paràbola simple cap amunt
       draw(s){makeBaseScaled(s,10,4);plotFnS(x=>x*x-4,-4,4,'#3a7bd5',s,2.6,'both');},
       qs:[
-        {text:'Quin és el <strong>domini</strong> d\'aquesta funció?',opts:['ℝ','[−3.5, 3.5]','[−4, +∞)','(0,+∞)'],ans:0,ex:'Paràbola sense restriccions: domini = ℝ.'},
-        {text:'Quin és el <strong>recorregut</strong>?',opts:['[−4, +∞)','ℝ','[0, +∞)','(−4,+∞)'],ans:0,ex:'Mínim al vèrtex y=−4, creix cap a +∞: recorregut = [−4, +∞).'},
+        {text:'Quin és el <strong>domini</strong> d\'aquesta funció?',opts:['(−∞,+∞)','[−3.5, 3.5]','[−4, +∞)','(0,+∞)'],ans:0,ex:'Paràbola sense restriccions: domini = (−∞,+∞).'},
+        {text:'Quin és el <strong>recorregut</strong>?',opts:['[−4, +∞)','(−∞,+∞)','[0, +∞)','(−4,+∞)'],ans:0,ex:'Mínim al vèrtex y=−4, creix cap a +∞: recorregut = [−4, +∞).'},
         {text:'La funció és <strong>contínua</strong>?',opts:['Sí, és contínua','No, té discontinuïtats'],ans:0,ex:'Paràbola: sempre contínua, cap salt.'},
         {text:'On talla la gràfica l\'<strong>eix X</strong>?',opts:['(−2, 0) i (2, 0)','(0, 0)','(−4, 0)','Cap'],ans:0,ex:'x²−4=0 → x=±2.'},
         {text:'On talla la gràfica l\'<strong>eix Y</strong>?',opts:['(0, −4)','(0, 4)','(0, 2)','Cap'],ans:0,ex:'f(0)=0−4=−4.'},
         {text:'On és el <strong>mínim</strong>?',opts:['x=0, y=−4','x=−2, y=0','x=2, y=0','Cap mínim'],ans:0,ex:'Vèrtex de la paràbola = mínim: (0,−4).'},
-      ],pts:8
+      ],pts:10
     },
     { // Recta simple
       draw(s){makeBase(s);plotFn(x=>-x+2,-4,4,'#2a9d8f',s,2.6,'both');},
       qs:[
-        {text:'Quin és el <strong>domini</strong>?',opts:['ℝ','[−4, 4]','[0,+∞)','(−∞, 2]'],ans:0,ex:'Recta: domini = ℝ.'},
-        {text:'Quin és el <strong>recorregut</strong>?',opts:['ℝ','[0,+∞)','[−4, 4]','(−∞, 2]'],ans:0,ex:'Recta: pren tots els valors reals. Recorregut = ℝ.'},
+        {text:'Quin és el <strong>domini</strong>?',opts:['(−∞,+∞)','[−4, 4]','[0,+∞)','(−∞, 2]'],ans:0,ex:'Recta: domini = (−∞,+∞).'},
+        {text:'Quin és el <strong>recorregut</strong>?',opts:['(−∞,+∞)','[0,+∞)','[−4, 4]','(−∞, 2]'],ans:0,ex:'Recta: pren tots els valors reals. Recorregut = (−∞,+∞).'},
         {text:'On talla l\'<strong>eix X</strong>?',opts:['(2, 0)','(−2, 0)','(0, 2)','Cap'],ans:0,ex:'−x+2=0 → x=2.'},
         {text:'On talla l\'<strong>eix Y</strong>?',opts:['(0, 2)','(0, −2)','(2, 0)','Cap'],ans:0,ex:'f(0)=2.'},
         {text:'La funció és <strong>creixent o decreixent</strong>?',opts:['Sempre decreixent','Sempre creixent','Creix i decreix','Constant'],ans:0,ex:'Pendent negatiu (−1): sempre decreixent.'},
-      ],pts:8
+      ],pts:10
     },
     { // Funció a trossos amb salt
       draw(s){makeBase(s);plotSeg(-3,2,0,2,'#e63946',true,false,s);dot(0,2,'#e63946',true,s);dot(0,-1,'#e63946',false,s);plotSeg(0,-1,3,-1,'#e63946',false,true,s);},
       qs:[
-        {text:'Quin és el <strong>domini</strong>?',opts:['[−3, 3]','(−3, 3)','[−3, 0]∪[0, 3]','ℝ'],ans:0,ex:'Definida de x=−3 (tancat) fins x=3 (tancat): domini = [−3, 3].'},
-        {text:'Quin és el <strong>recorregut</strong>?',opts:['{−1, 2}','[−1, 2]','(−1, 2)','ℝ'],ans:0,ex:'Pren dos valors: recorregut = {−1, 2}.'},
+        {text:'Quin és el <strong>domini</strong>?',opts:['[−3, 3]','(−3, 3)','[−3, 0]∪[0, 3]','(−∞,+∞)'],ans:0,ex:'Definida de x=−3 (tancat) fins x=3 (tancat): domini = [−3, 3].'},
+        {text:'Quin és el <strong>recorregut</strong>?',opts:['{−1, 2}','[−1, 2]','(−1, 2)','(−∞,+∞)'],ans:0,ex:'Pren dos valors: recorregut = {−1, 2}.'},
         {text:'La funció és <strong>contínua</strong>?',opts:['No, discontinuïtat a x=0','Sí, és contínua','No, discontinuïtat a x=−3','No, discontinuïtat a x=3'],ans:0,ex:'Salt a x=0: el tram superior acaba tancat però l\'inferior comença obert, hi ha un salt de y=2 a y=−1.'},
         {text:'On talla l\'<strong>eix Y</strong>?',opts:['(0, 2)','(0, −1)','No talla','(0, 0)'],ans:0,ex:'A x=0 la funció val 2 (punt tancat del tram superior): tall a (0, 2).'},
       ],pts:10
@@ -1140,8 +1149,8 @@ function analitzaBank(level){
         dot( 4, 2.5+1.8*Math.cos( 4*Math.PI/2.5),'#2a9d8f',true,s);
       },
       qs:[
-        {text:'Quin és el <strong>domini</strong>?',opts:['[−4, 4]','ℝ','(−4, 4)','[0, 4]'],ans:0,ex:'La gràfica comença i acaba als extrems tancats x=−4 i x=4: domini = [−4, 4].'},
-        {text:'Quin és el <strong>recorregut</strong> aproximat?',opts:['[0.7, 4.3] aprox','ℝ','[0, 5]','[2, 4]'],ans:0,ex:'La corba oscil·la entre un mínim d\'aprox 0.7 i un màxim d\'aprox 4.3.'},
+        {text:'Quin és el <strong>domini</strong>?',opts:['[−4, 4]','(−∞,+∞)','(−4, 4)','[0, 4]'],ans:0,ex:'La gràfica comença i acaba als extrems tancats x=−4 i x=4: domini = [−4, 4].'},
+        {text:'Quin és el <strong>recorregut</strong> aproximat?',opts:['[0.7, 4.3] aprox','(−∞,+∞)','[0, 5]','[2, 4]'],ans:0,ex:'La corba oscil·la entre un mínim d\'aprox 0.7 i un màxim d\'aprox 4.3.'},
         {text:'La funció és <strong>contínua</strong>?',opts:['Sí, és contínua','No, té un salt a x=0','No, té dos salts','No és contínua'],ans:0,ex:'La corba es pot dibuixar d\'un sol traç: és contínua en tot el seu domini.'},
         {text:'La funció <strong>té simetria</strong>?',opts:['Sí, aproximadament parella (eix Y)','Sí, senar (origen)','Cap simetria','Sí, periòdica'],ans:0,ex:'La forma és aprox simètrica respecte a l\'eix Y (funció parella): f(−x)≈f(x).'},
         {text:'Quants <strong>màxims locals</strong> té en el domini visible?',opts:['2 (aprox x=−2.5 i x=2.5)','1 (x=0)','3','Cap'],ans:0,ex:'Hi ha dos pics visibles: un cap a x≈−2.5 i un cap a x≈2.5.'},
@@ -1154,7 +1163,7 @@ function analitzaBank(level){
         plotFn(x=>x*x*x-3*x,-3,3,'#f4a261',s,2.6,'both');
       },
       qs:[
-        {text:'Quin és el <strong>domini</strong>?',opts:['ℝ','[−3, 3]','(−3, 3)','[−2, 2]'],ans:0,ex:'Polinomi: domini = ℝ (la gràfica mostra el tram [−3,3] però continua cap a ±∞).'},
+        {text:'Quin és el <strong>domini</strong>?',opts:['(−∞,+∞)','[−3, 3]','(−3, 3)','[−2, 2]'],ans:0,ex:'Polinomi: domini = (−∞,+∞) (la gràfica mostra el tram [−3,3] però continua cap a ±∞).'},
         {text:'La funció és <strong>contínua</strong>?',opts:['Sí','No, a x=0','No, a x=±1','No, a x=±√3'],ans:0,ex:'Polinomi: sempre continu, sense cap salt ni forat.'},
         {text:'On talla l\'<strong>eix X</strong>?',opts:['x=−√3≈−1.73, x=0 i x=√3≈1.73','Només x=0','x=−1 i x=1','x=−3 i x=3'],ans:0,ex:'x³−3x=x(x²−3)=0 → x=0 i x=±√3≈±1.73.'},
         {text:'On és el <strong>màxim local</strong>?',opts:['x=−1, y=2','x=0, y=0','x=1, y=−2','x=−√3, y=0'],ans:0,ex:'f\'=3x²−3=0 → x=±1. f(−1)=−1+3=2: màxim local a (−1, 2).'},
@@ -1185,7 +1194,7 @@ function analitzaBank(level){
         {text:'On talla la gràfica l\'<strong>eix X</strong>?',opts:['x=−3 i x=3','x=−1 i x=3','Només x=1','Cap'],ans:0,ex:'Tram dret: −(x+1)²+4=0→(x+1)²=4→x=1 o x=−3. Talls a x=−3 (tancat) i x=3 (tancat).'},
         {text:'On talla la gràfica l\'<strong>eix Y</strong>?',opts:['(0, 3)','(0, 0)','No talla','(0, 4)'],ans:0,ex:'A x=0: f(0)=−(1)²+4=3. Tall a (0, 3).'},
         {text:'En quin interval és <strong>creixent</strong>?',opts:['(−3, 1)','(1, 3)','(−5, −3)','(−5, 1)'],ans:0,ex:'La paràbola puja de x=−3 fins al vèrtex x=1: creixent a (−3, 1).'},
-      ],pts:14
+      ],pts:10
     },
     { // f a trossos: recta + paràbola + recta. Contínua. Dom=[−4,4]
       // Tram 1: f(x)=x+4, x∈[−4,−2] → f(−4)=0, f(−2)=2
@@ -1207,24 +1216,24 @@ function analitzaBank(level){
         dot(2,-2,'#e76f51',false,s);dot(4,0,'#e76f51',true,s);
       },
       qs:[
-        {text:'Quin és el <strong>domini</strong>?',opts:['[−4, 4]','ℝ','(−4, 4)','[−4, 4)'],ans:0,ex:'La gràfica va de x=−4 (tancat) a x=4 (tancat): domini = [−4, 4].'},
+        {text:'Quin és el <strong>domini</strong>?',opts:['[−4, 4]','(−∞,+∞)','(−4, 4)','[−4, 4)'],ans:0,ex:'La gràfica va de x=−4 (tancat) a x=4 (tancat): domini = [−4, 4].'},
         {text:'La funció és <strong>contínua</strong>?',opts:['Sí, és contínua','No, a x=0','No, a x=0 i x=2','No, a x=2'],ans:0,ex:'Els tres trams empalmen exactament: f(0)=2 per tots dos, f(2)=−2 per tots dos. Contínua.'},
         {text:'On és el <strong>màxim absolut</strong>?',opts:['x=0, y=2','x=−4, y=0','x=4, y=0','x=2, y=−2'],ans:0,ex:'El punt més alt és (0, 2): màxim absolut al tram central.'},
         {text:'On és el <strong>mínim absolut</strong>?',opts:['x=2, y=−2','x=−4, y=0','x=4, y=0','No té mínim'],ans:0,ex:'El punt més baix és (2, −2): mínim absolut.'},
         {text:'On talla la gràfica l\'<strong>eix X</strong>?',opts:['x=−4, x≈1.41 i x=4','Només x=0','x=−4 i x=4','x=−4, x=0 i x=4'],ans:0,ex:'Tram1: f(−4)=0. Tram2: −x²+2=0→x=√2≈1.41. Tram3: f(4)=0. Tres talls.'},
         {text:'En quin interval la funció és <strong>decreixent</strong>?',opts:['(0, 2)','(−4, 0)','(2, 4)','(0, 4)'],ans:0,ex:'La paràbola del tram central decreix de x=0 al mínim x=2. El tram3 (pendent +1) creix. Decreixent: (0, 2).'},
-      ],pts:14
+      ],pts:10
     },
     { // Sinusoide + anàlisi completa (periòdica)
       draw(s){makeBase(s);plotFn(x=>2*Math.sin(x*Math.PI/2),-4,4,'#3a7bd5',s,2.6,'both');},
       qs:[
         {text:'La funció és <strong>periòdica</strong>? Quin és el període?',opts:['Sí, T = 4','Sí, T = 2','Sí, T = π','No és periòdica'],ans:0,ex:'La sinusoide es repeteix cada 4 unitats: sin(π(x+4)/2)=sin(πx/2). Període = 4.'},
-        {text:'Quin és el <strong>recorregut</strong>?',opts:['[−2, 2]','(−2, 2)','ℝ','[0, 2]'],ans:0,ex:'Amplitud 2: valors entre −2 i 2 (tots dos assolits). Recorregut = [−2, 2].'},
+        {text:'Quin és el <strong>recorregut</strong>?',opts:['[−2, 2]','(−2, 2)','(−∞,+∞)','[0, 2]'],ans:0,ex:'Amplitud 2: valors entre −2 i 2 (tots dos assolits). Recorregut = [−2, 2].'},
         {text:'On talla l\'<strong>eix X</strong> al rang [−4, 4]?',opts:['x = −4, −2, 0, 2, 4','x = 0 i x = 4','x = −2, 0, 2','Cap'],ans:0,ex:'sin(πx/2)=0 → x = 2n: x = −4, −2, 0, 2, 4.'},
         {text:'On és el <strong>màxim absolut</strong> en el rang [−4, 4]?',opts:['x=−3 i x=1, y=2','x=0, y=0','x=2, y=0','x=4, y=0'],ans:0,ex:'sin(πx/2)=1 → x=1 i, per periodicitat, x=−3. Màxim y=2.'},
         {text:'En quin interval és <strong>decreixent</strong>?',opts:['(1, 3) i (−3, −1) aprox','(0, 2)','(−4, 0)','No decreix'],ans:0,ex:'Decreix entre cada màxim i el mínim següent: (1,3) i (−3,−1).'},
         {text:'La funció és <strong>parella, senar o cap de les dues</strong>?',opts:['Senar (f(−x)=−f(x))','Parella (f(−x)=f(x))','Cap simetria','Periòdica però sense simetria'],ans:0,ex:'sin(−x)=−sin(x): la sinusoide és una funció senar, simètrica respecte a l\'origen.'},
-      ],pts:14
+      ],pts:10
     },
   ];
   const banks={1:L1,2:L2,3:L3};
@@ -1249,7 +1258,7 @@ function matchBank0(level){
     {description:'Funció amb un <strong>màxim local i un mínim local</strong>.',correctIdx:0,explain:'La cúbica té una "gepa" cap amunt (màxim) i una "vall" cap avall (mínim).',
       graphs:[{draw(s){makeBase(s);plotFn(x=>x*x*x*0.3-2*x,-3.5,3.5,'#3a7bd5',s);},label:'Màxim i mínim'},{draw(s){makeBase(s);plotFn(x=>x*x-1,-4,4,'#e63946',s);},label:'Només mínim'},{draw(s){makeBase(s);plotFn(x=>x*0.7,-4,4,'#2a9d8f',s);},label:'Sense extrems'}]},
     {description:'Funció definida <strong>només per a x ≥ 0</strong> i sempre creixent.',correctIdx:1,explain:'L\'arrel quadrada està definida per a x ≥ 0 i creix suaument.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>x*x,-4,4,'#7b5ea7',s);},label:'Definida per tot ℝ'},{draw(s){makeBase(s);plotFn(x=>Math.sqrt(x),0,4.5,'#f4a261',s);dot(0,0,'#f4a261',true,s);},label:'Definida per x ≥ 0'},{draw(s){makeBase(s);plotFn(x=>Math.abs(x),-4,4,'#e63946',s);},label:'Definida per tot ℝ'}]},
+      graphs:[{draw(s){makeBase(s);plotFn(x=>x*x,-4,4,'#7b5ea7',s);},label:'Definida per tots els reals'},{draw(s){makeBase(s);plotFn(x=>Math.sqrt(x),0,4.5,'#f4a261',s);dot(0,0,'#f4a261',true,s);},label:'Definida per x ≥ 0'},{draw(s){makeBase(s);plotFn(x=>Math.abs(x),-4,4,'#e63946',s);},label:'Definida per tots els reals'}]},
   ];
   const L3=[
     {description:'Funció amb una <strong>asímptota vertical a x=0</strong> i una <strong>asímptota horitzontal a y=0</strong>.',correctIdx:2,explain:'La hipèrbola 1/x s\'aproxima a y=0 quan x→±∞ i no existeix a x=0.',
@@ -1283,7 +1292,7 @@ function matchBank1(level){
   const L3=[
     {description:'Funció on el <strong>màxim absolut</strong> és y=3 i s\'assoleix a x=1.',correctIdx:1,explain:'El punt màxim absolut de la gràfica és (1,3).',
       graphs:[{draw(s){makeBase(s);plotFn(x=>-x*x+4,-4,4,'#3a7bd5',s);},label:'Màxim a (0,4)'},{draw(s){makeBase(s);plotFn(x=>-(x-1)*(x-1)+3,-4,4,'#e63946',s);},label:'Màxim a (1,3)'},{draw(s){makeBase(s);plotFn(x=>-(x-2)*(x-2)+3,-1,5,'#7b5ea7',s);},label:'Màxim a (2,3)'}]},
-    {description:'Funció <strong>creixent</strong> però la seva corba és <strong>còncava cap avall</strong>: puja cada vegada menys pronunciadament.',correctIdx:2,explain:'L\'arrel quadrada creix però la seva pendent es va aplanant: és còncava cap avall.',
+    {description:'Funció <strong>creixent</strong> però que <strong>puja cada vegada més lentament</strong>: la corba s\'aplana progressivament.',correctIdx:2,explain:'L\'arrel quadrada creix però cada cop de manera menys pronunciada: la pendent disminueix progressivament.',
       graphs:[{draw(s){makeBase(s);plotFn(x=>x,-0.5,4.5,'#2a9d8f',s);},label:'Creix a ritme constant'},{draw(s){makeBase(s);plotFn(x=>x*x,0,3,'#f4a261',s);},label:'Creix cada cop més ràpid'},{draw(s){makeBase(s);plotFn(x=>Math.sqrt(x),0,4.5,'#3a7bd5',s);dot(0,0,'#3a7bd5',true,s);},label:'Creix cada cop més lent'}]},
     {description:'Funció sense cap <strong>màxim absolut</strong> ni <strong>mínim absolut</strong>, però que <strong>no és sempre monòtona</strong> (té extrems locals).',correctIdx:0,explain:'x·sin(x) té màxims i mínims locals però cap d\'absolut: creix i decreix alternativament i s\'estén cap a infinit.',
       graphs:[{draw(s){makeBase(s);plotFn(x=>x*Math.sin(x)*0.4,-4,4,'#7b5ea7',s,2.6,'both');},label:'Extrems locals, sense absoluts'},{draw(s){makeBase(s);plotFn(x=>x*x*x*0.1-x,-3,3,'#e63946',s,2.6,'both');},label:'Té dos extrems locals acotats'},{draw(s){makeBase(s);plotFn(x=>x*0.5,-4,4,'#2a9d8f',s,2.6,'both');},label:'Recta: monòtona'}]},
@@ -1295,40 +1304,40 @@ function matchBank1(level){
 function matchBank2(level){
   const L1=[
     {description:'Funció amb domini <strong>[−3, 2]</strong>: segment tancat als dos extrems.',correctIdx:0,explain:'Punt tancat a x=−3 i punt tancat a x=2.',
-      graphs:[{draw(s){makeBase(s);plotSeg(-3,-1,2,2,'#3a7bd5',true,true,s);},label:'Domini [−3, 2]'},{draw(s){makeBase(s);plotFn(x=>0.5*x,-4,4,'#e63946',s);},label:'Domini ℝ'},{draw(s){makeBase(s);plotSeg(0,-1,3,2,'#7b5ea7',true,true,s);},label:'Domini [0, 3]'}]},
+      graphs:[{draw(s){makeBase(s);plotSeg(-3,-1,2,2,'#3a7bd5',true,true,s);},label:'Domini [−3, 2]'},{draw(s){makeBase(s);plotFn(x=>0.5*x,-4,4,'#e63946',s);},label:'Domini (−∞,+∞)'},{draw(s){makeBase(s);plotSeg(0,-1,3,2,'#7b5ea7',true,true,s);},label:'Domini [0, 3]'}]},
     {description:'Funció amb recorregut <strong>[0, +∞)</strong>: mai pren valors negatius.',correctIdx:2,explain:'La paràbola x² sempre és ≥0: el recorregut comença a 0.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#2a9d8f',s);},label:'Recorregut ℝ'},{draw(s){makeBase(s);plotFn(x=>-x*x+1,-4,4,'#f4a261',s);},label:'Recorregut (−∞,1]'},{draw(s){makeBase(s);plotFn(x=>x*x,-3.5,3.5,'#3a7bd5',s);},label:'Recorregut [0,+∞)'}]},
-    {description:'Funció amb domini <strong>ℝ − {0}</strong>: definida arreu menys a x=0.',correctIdx:1,explain:'La hipèrbola no existeix a x=0: salta d\'un costat a l\'altre.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>x+1,-4,4,'#7b5ea7',s,2.6,'both');},label:'Domini ℝ'},{draw(s){makeBase(s);plotFn(x=>1/x,-4.5,-0.3,'#e63946',s,2.6,'both');plotFn(x=>1/x,0.3,4.5,'#e63946',s,2.6,'both');},label:'Domini ℝ − {0}'},{draw(s){makeBase(s);plotSeg(-3,1,2,1,'#2a9d8f',true,true,s);},label:'Domini [−3,2]'}]},
+      graphs:[{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#2a9d8f',s);},label:'Recorregut (−∞,+∞)'},{draw(s){makeBase(s);plotFn(x=>-x*x+1,-4,4,'#f4a261',s);},label:'Recorregut (−∞,1]'},{draw(s){makeBase(s);plotFn(x=>x*x,-3.5,3.5,'#3a7bd5',s);},label:'Recorregut [0,+∞)'}]},
+    {description:'Funció no definida a x=0: la gràfica té dues branques, una per a x<0 i una per a x>0.',correctIdx:1,explain:'La gràfica salta a x=0: no hi ha cap valor definit en aquest punt.',
+      graphs:[{draw(s){makeBase(s);plotFn(x=>x+1,-4,4,'#7b5ea7',s,2.6,'both');},label:'Domini (−∞,+∞)'},{draw(s){makeBase(s);plotFn(x=>1/x,-4.5,-0.3,'#e63946',s,2.6,'both');plotFn(x=>1/x,0.3,4.5,'#e63946',s,2.6,'both');},label:'Domini (−∞,0)∪(0,+∞)'},{draw(s){makeBase(s);plotSeg(-3,1,2,1,'#2a9d8f',true,true,s);},label:'Domini [−3,2]'}]},
     {description:'Funció amb domini <strong>(0, 4]</strong>: extrem esquerre obert, dret tancat.',correctIdx:0,explain:'Punt obert a x=0 (no inclòs) i punt tancat a x=4 (inclòs).',
       graphs:[{draw(s){makeBase(s);plotSeg(0,1,4,3,'#f4a261',false,true,s);},label:'Domini (0, 4]'},{draw(s){makeBase(s);plotSeg(0,1,4,3,'#3a7bd5',true,true,s);},label:'Domini [0, 4]'},{draw(s){makeBase(s);plotSeg(0,1,4,3,'#7b5ea7',true,false,s);},label:'Domini [0, 4)'}]},
   ];
   const L2=[
     {description:'Funció amb domini <strong>[0, +∞)</strong> i recorregut <strong>[0, +∞)</strong>.',correctIdx:1,explain:'L\'arrel quadrada: definida i positiva per a x ≥ 0.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>x*x,-4,4,'#3a7bd5',s);},label:'Dom ℝ, Rec [0,+∞)'},{draw(s){makeBase(s);plotFn(x=>Math.sqrt(x),0,4.5,'#e63946',s);dot(0,0,'#e63946',true,s);},label:'Dom [0,+∞), Rec [0,+∞)'},{draw(s){makeBase(s);plotFn(x=>Math.abs(x)-2,-4,4,'#7b5ea7',s);},label:'Dom ℝ, Rec [−2,+∞)'}]},
+      graphs:[{draw(s){makeBase(s);plotFn(x=>x*x,-4,4,'#3a7bd5',s);},label:'Dom (−∞,+∞), Rec [0,+∞)'},{draw(s){makeBase(s);plotFn(x=>Math.sqrt(x),0,4.5,'#e63946',s);dot(0,0,'#e63946',true,s);},label:'Dom [0,+∞), Rec [0,+∞)'},{draw(s){makeBase(s);plotFn(x=>Math.abs(x)-2,-4,4,'#7b5ea7',s);},label:'Dom (−∞,+∞), Rec [−2,+∞)'}]},
     {description:'Funció amb recorregut <strong>(−∞, 4]</strong>: té un màxim de y=4 però no té mínim.',correctIdx:0,explain:'Paràbola cap avall amb vèrtex a y=4: el màxim és 4 i decreix cap a −∞.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>-x*x+4,-4,4,'#2a9d8f',s);},label:'Recorregut (−∞,4]'},{draw(s){makeBase(s);plotFn(x=>x*x-4,-4,4,'#f4a261',s);},label:'Recorregut [−4,+∞)'},{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#3a7bd5',s);},label:'Recorregut ℝ'}]},
+      graphs:[{draw(s){makeBase(s);plotFn(x=>-x*x+4,-4,4,'#2a9d8f',s);},label:'Recorregut (−∞,4]'},{draw(s){makeBase(s);plotFn(x=>x*x-4,-4,4,'#f4a261',s);},label:'Recorregut [−4,+∞)'},{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#3a7bd5',s);},label:'Recorregut (−∞,+∞)'}]},
     {description:'Funció amb domini <strong>(−3,+∞)</strong>: definida a partir de x=−3 (exclòs).',correctIdx:2,explain:'El logaritme o l\'arrel amb desplaçament comença a un punt exclòs.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>Math.sqrt(x+3),-3,4.5,'#7b5ea7',s);dot(-3,0,'#7b5ea7',true,s);},label:'Domini [−3,+∞)'},{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#e63946',s);},label:'Domini ℝ'},{draw(s){makeBase(s);plotFn(x=>x+3>0?Math.log(x+3)/Math.log(2):null,-2.9,4.5,'#3a7bd5',s);},label:'Domini (−3,+∞)'}]},
+      graphs:[{draw(s){makeBase(s);plotFn(x=>Math.sqrt(x+3),-3,4.5,'#7b5ea7',s);dot(-3,0,'#7b5ea7',true,s);},label:'Domini [−3,+∞)'},{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#e63946',s);},label:'Domini (−∞,+∞)'},{draw(s){makeBase(s);plotFn(x=>x+3>0?Math.log(x+3)/Math.log(2):null,-2.9,4.5,'#3a7bd5',s);},label:'Domini (−3,+∞)'}]},
     {description:'Funció definida en <strong>dos trams disjunts</strong> amb domini [−4,−1]∪[1,4].',correctIdx:1,explain:'Dos segments separats: hi ha un "buit" entre x=−1 i x=1.',
-      graphs:[{draw(s){makeBase(s);plotSeg(-4,2,4,2,'#f4a261',true,true,s);},label:'Domini [−4,4] (un tram)'},{draw(s){makeBase(s);plotSeg(-4,1,-1,1,'#2a9d8f',true,true,s);plotSeg(1,-1,4,-1,'#2a9d8f',true,true,s);},label:'Domini [−4,−1]∪[1,4]'},{draw(s){makeBase(s);plotFn(x=>x*x*0.2,-4,4,'#7b5ea7',s);},label:'Domini ℝ (paràbola)'}]},
+      graphs:[{draw(s){makeBase(s);plotSeg(-4,2,4,2,'#f4a261',true,true,s);},label:'Domini [−4,4] (un tram)'},{draw(s){makeBase(s);plotSeg(-4,1,-1,1,'#2a9d8f',true,true,s);plotSeg(1,-1,4,-1,'#2a9d8f',true,true,s);},label:'Domini [−4,−1]∪[1,4]'},{draw(s){makeBase(s);plotFn(x=>x*x*0.2,-4,4,'#7b5ea7',s);},label:'Domini (−∞,+∞) (paràbola)'}]},
   ];
   const L3=[
     {description:'Funció on el <strong>recorregut és exactament {−1, 0, 1}</strong>: tres valors discrets.',correctIdx:2,explain:'La funció signe pren només tres valors: −1, 0 i 1.',
       graphs:[{draw(s){makeBase(s);plotFn(x=>x*x*0.3-1,-4,4,'#3a7bd5',s);},label:'Recorregut [−1,+∞)'},{draw(s){makeBase(s);plotSeg(-4,2,4,2,'#e63946',true,true,s);},label:'Recorregut {2}'},{draw(s){makeBase(s);plotSeg(-4,-1,0,-1,'#7b5ea7',true,false,s);dot(0,-1,'#7b5ea7',false,s);dot(0,0,'#7b5ea7',true,s);dot(0,1,'#7b5ea7',false,s);plotSeg(0,1,4,1,'#7b5ea7',false,true,s);},label:'Recorregut {−1,0,1}'}]},
-    {description:'Funció amb domini <strong>ℝ</strong> però recorregut <strong>(0, 3]</strong>: fitada per dalt i s\'aproxima a 0 per sota.',correctIdx:1,explain:'La campana de Gauss desplaçada: mai arriba a 0 però té un màxim absolut.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>x*x,-3.5,3.5,'#2a9d8f',s);},label:'Recorregut [0,+∞)'},{draw(s){makeBase(s);plotFn(x=>3/(x*x+1),-4,4,'#f4a261',s);},label:'Recorregut (0,3]'},{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#3a7bd5',s);},label:'Recorregut ℝ'}]},
-    {description:'Funció racional amb domini <strong>ℝ − {−2, 2}</strong>: no definida en dos punts.',correctIdx:0,explain:'El denominador x²−4=(x−2)(x+2) s\'anul·la a x=±2.',
-      graphs:[{draw(s){makeBase(s);plotFn(x=>1/(x*x-4),-1.8,1.8,'#e63946',s,2.6,'both');plotFn(x=>1/(x*x-4),-4,-2.2,'#e63946',s,2.6,'both');plotFn(x=>1/(x*x-4),2.2,4,'#e63946',s,2.6,'both');},label:'Dom ℝ − {−2, 2}'},{draw(s){makeBase(s);plotFn(x=>1/x,-4.5,-0.3,'#7b5ea7',s,2.6,'both');plotFn(x=>1/x,0.3,4.5,'#7b5ea7',s,2.6,'both');},label:'Dom ℝ − {0}'},{draw(s){makeBase(s);plotFn(x=>x*x-4,-4,4,'#3a7bd5',s,2.6,'both');},label:'Dom ℝ (polinomi)'}]},
+    {description:'Funció definida per a tots els valors de x però el recorregut és <strong>(0, 3]</strong>: mai arriba a 0 però té un màxim.',correctIdx:1,explain:'La corba té un màxim absolut i s\'aproxima a y=0 sense arribar-hi mai.',
+      graphs:[{draw(s){makeBase(s);plotFn(x=>x*x,-3.5,3.5,'#2a9d8f',s);},label:'Recorregut [0,+∞)'},{draw(s){makeBase(s);plotFn(x=>3/(x*x+1),-4,4,'#f4a261',s);},label:'Recorregut (0,3]'},{draw(s){makeBase(s);plotFn(x=>x,-4,4,'#3a7bd5',s);},label:'Recorregut (−∞,+∞)'}]},
+    {description:'Funció no definida en dos punts: x=−2 i x=2. Té tres branques separades.',correctIdx:0,explain:'La gràfica té tres parts: a l\'esquerra de −2, entre −2 i 2, i a la dreta de 2.',
+      graphs:[{draw(s){makeBase(s);plotFn(x=>1/(x*x-4),-1.8,1.8,'#e63946',s,2.6,'both');plotFn(x=>1/(x*x-4),-4,-2.2,'#e63946',s,2.6,'both');plotFn(x=>1/(x*x-4),2.2,4,'#e63946',s,2.6,'both');},label:'Dom (−∞,−2)∪(−2,2)∪(2,+∞)'},{draw(s){makeBase(s);plotFn(x=>1/x,-4.5,-0.3,'#7b5ea7',s,2.6,'both');plotFn(x=>1/x,0.3,4.5,'#7b5ea7',s,2.6,'both');},label:'Dom (−∞,0)∪(0,+∞)'},{draw(s){makeBase(s);plotFn(x=>x*x-4,-4,4,'#3a7bd5',s,2.6,'both');},label:'Dom (−∞,+∞)'}]},
   ];
   const banks={1:L1,2:L2,3:L3};
   return shuffleArr([...banks[level]]).slice(0,level===1?3:level===2?4:3);
 }
 
 // ── BUILD QUESTIONS ────────────────────────────────────
-// Punts per nivell: N1=10, N2=15, N3=20
-const PTS = {1:10, 2:15, 3:20};
-const MATCH_PTS = {1:10, 2:15, 3:20};
+// Punts per pregunta: sempre 10, independentment del nivell
+const PTS = {1:10, 2:10, 3:10};
+const MATCH_PTS = {1:10, 2:10, 3:10};
 
 function buildQs(gameIdx,bank,level){
   const pts = PTS[level];
