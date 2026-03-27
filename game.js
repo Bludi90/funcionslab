@@ -522,23 +522,29 @@ function totalObtingutPerLevel(lv){
 
 // ── BADGES I RESUM DE PUNTUACIÓ ──────────────────────────
 function updateBadges(){
-  // Targetes individuals: mostra la millor del nivell actual
+  // Targetes individuals: mostra els 3 nivells
   for(let i=0;i<6;i++){
     const el=document.getElementById(`badge-${i}`);
     if(!el) continue;
-    const best=gameBestScores[i][currentLevel]||0;
-    const max=GAME_MAX[i]?.[currentLevel]||0;
-    el.textContent = best>0 ? `${best} / ${max} pts` : `Màx: ${max} pts`;
+    el.innerHTML = badgeLevelHTML(gameBestScores[i], GAME_MAX[i]);
   }
   for(let i=0;i<3;i++){
     const el=document.getElementById(`badge-m${i}`);
     if(!el) continue;
-    const best=matchBestScores[i][currentLevel]||0;
-    const max=MATCH_MAX[i]?.[currentLevel]||0;
-    el.textContent = best>0 ? `${best} / ${max} pts` : `Màx: ${max} pts`;
+    el.innerHTML = badgeLevelHTML(matchBestScores[i], MATCH_MAX[i]);
   }
-  // Resum per nivells davant de les seccions
   renderLevelSummary();
+}
+
+function badgeLevelHTML(scores, maxMap){
+  const stars = ['⭐','⭐⭐','⭐⭐⭐'];
+  return [1,2,3].map((lv,i) => {
+    const obt = scores[lv] || 0;
+    const max = maxMap?.[lv] || 0;
+    const txt = obt > 0 ? `${obt}/${max}` : `${max}`;
+    const style = obt > 0 ? 'color:var(--accent4);font-weight:800' : 'color:var(--text-muted)';
+    return `<span style="white-space:nowrap">${stars[i]} <span style="${style}">${txt}</span></span>`;
+  }).join('<span style="color:var(--border2);margin:0 3px">·</span>');
 }
 
 function renderLevelSummary(){
@@ -1659,7 +1665,7 @@ function shuffleArr(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.ran
   const teacherBtn = document.createElement('button');
   teacherBtn.className = 'nav-btn';
   teacherBtn.style.cssText = 'margin-left:8px;border-color:rgba(123,94,167,0.3);color:#7b5ea7';
-  teacherBtn.textContent = '👩‍🏫 Professorat';
+  teacherBtn.textContent = '👩‍🏫 Profe';
   teacherBtn.onclick = goTeacher;
   nav.appendChild(teacherBtn);
 
